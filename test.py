@@ -1,5 +1,5 @@
-import localpath
-from forms import FakeForm
+# import localpath
+from framework.forms import FakeForm
 
 
 my_string = "ah!"

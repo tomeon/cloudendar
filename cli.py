@@ -1,5 +1,5 @@
-import localpath
-import npyscreen
+# import localpath
+import framework.npyscreen
 
 class SchedulerAppication(npyscreen.NPSAppManaged):
     def onStart(self):
