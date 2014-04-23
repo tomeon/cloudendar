@@ -1,11 +1,6 @@
-import bottle
-import sqlite3
+import localpath
+from modules import bottle
 
-# Enable debugging
-bottle.debug(True)
-
-# Automatically reload testing server
-bottle.run(reloader=True)
 
 app = application = bottle.Bottle()
 
@@ -21,4 +16,4 @@ def index():
 
 
 if __name__ == "__main__":
-    bottle.run(app, host='localhost', port=8080)
+    bottle.run(app, host='localhost', port=8080, reloader=True, debug=True)
