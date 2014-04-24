@@ -1,4 +1,3 @@
-import localpath
 import npyscreen
 
 class SchedulerAppication(npyscreen.NPSAppManaged):
