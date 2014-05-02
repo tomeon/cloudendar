@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+    </head>
+    <body>
+        <h2>Demo</h2>
+        <ul id="output"></div>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                var sse = new EventSource('/source');
+                sse.addEventListener('message', function(m) {
+                    console.log(m.data)
+                    var newElement = document.createElement("li");
+                    newElement.innerHTML = m.data;
+                    $("#output").append(newElement)
+                });
+            });
+        </script>
+    </body>
+</html>
