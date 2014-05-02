@@ -1,14 +1,12 @@
-import gevent.monkey ; gevent.monkey.patch_all()
+import gevent.monkey; gevent.monkey.patch_all()
 import flask
 import gevent.wsgi
-import os
 import werkzeug.serving
 
 from database import db_session, db_init
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.moment import Moment
-from flask.ext.sqlalchemy import SQLAlchemy
-from forms import LoginForm, SignupForm
+from forms import EventForm, LoginForm, SignupForm
 from time import sleep
 
 
@@ -25,7 +23,7 @@ def create_app():
 
 
 app = create_app()
-db = SQLAlchemy(app)
+db_init()
 
 
 # Hooks
@@ -50,7 +48,6 @@ def login_form():
     if form.validate_on_submit():
         flask.flash("Success!")
         flask.session['username'] = form.username.data
-        print(form.username.data)
         return flask.redirect(flask.url_for('index'))
     return flask.render_template('login.html', form=form)
 
@@ -59,8 +56,21 @@ def login_form():
 def signup_form():
     form = SignupForm()
     if form.validate_on_submit():
-        flask.redirect('/')
+        flask.flash("Success!")
+        flask.session['username'] = form.username.data
+        return flask.redirect(flask.url_for('index'))
     return flask.render_template('submit.html', form=form)
+
+
+@app.route('/add', methods=["GET", "POST"])
+def event_form():
+    form = EventForm()
+    if form.validate_on_submit():
+        flask.flash("Success!")
+        print(form.start.data)
+        print(form.end.data)
+        return flask.redirect(flask.url_for('index'))
+    return flask.render_template('event.html', form=form)
 
 
 @app.route('/source')
@@ -73,12 +83,18 @@ def sse_request():
             yield "data: %s\n\n" % counter
             counter += 1
     return flask.Response(message(), mimetype='text/event-stream')
-    #return flask.Response(message())
+    # return flask.Response(message())
 
 
 @app.route('/test')
 def page():
     return flask.render_template('sse.html')
+
+
+@app.route('/printdb')
+def print_db():
+    print(db_session)
+    return flask.redirect(flask.url_for('index'))
 
 
 @app.errorhandler(404)

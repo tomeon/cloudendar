@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-db_uri = 'sqlite:///' + os.path.join(basedir, 'db/data.sqlite')
+db_uri = 'sqlite:///' + os.path.join(basedir, 'data/db/data.sqlite')
 
 engine = create_engine(db_uri, convert_unicode=True)
 db_session = scoped_session(sessionmaker(autocommit=False,

@@ -1,13 +1,16 @@
 from cgi import escape
-
+from datetime import date
+from dateutil.relativedelta import relativedelta
 from flask.ext.wtf import Form
 from wtforms import (
     PasswordField,
     SelectField,
     StringField,
     SubmitField,
+    TextField,
 )
 from wtforms.compat import text_type
+from wtforms.ext.dateutil.fields import DateTimeField
 from wtforms.validators import (
     InputRequired,
     Email,
@@ -75,3 +78,13 @@ class SignupForm(Form):
          EqualTo('check_password', message="Passwords must match")])
     check_password = PasswordField('Re-enter password')
     submit = SubmitField('Sign up')
+
+
+class EventForm(Form):
+    start = DateTimeField('Start time',
+                          validators=[InputRequired()],
+                          default=date.today() + relativedelta(hour=12))
+    end = DateTimeField('End time',
+                        validators=[InputRequired()],
+                        default=date.today() + relativedelta(hour=13))
+    desc = TextField('Description')
