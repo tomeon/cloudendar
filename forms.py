@@ -88,3 +88,34 @@ class EventForm(Form):
                         validators=[InputRequired()],
                         default=date.today() + relativedelta(hour=13))
     desc = TextField('Description')
+
+
+class LoginObj(object):
+    def __init__(self, username=None, password=None):
+        self.username = username
+        self.password = password
+
+    def __repr__(self):
+        print("<LoginObj %r>" % self.username)
+
+
+class SignupObj(object):
+    def __init__(self, email=None, username=None, password=None,
+                 check_password=None):
+        self.email = email
+        self.username = username
+        self.password = password
+        self.check_password = check_password
+
+    def __repr__(self):
+        print("<SignupObj %r>" % self.username)
+
+
+class EventObj(object):
+    def __init__(self, start=None, end=None, desc=None):
+        self.start = start
+        self.end = end
+        self.desc = desc
+
+    def __repr__(self):
+        print("<EventObj %r %r>" % self.start, self.end)
