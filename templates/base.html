@@ -2,14 +2,15 @@
 
 {% import 'macros.html' as macros %}
 
-{% block head %}
+{% block styles %}
 {{ super() }}
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='assets/css/base.css') }}">
+<script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 {{ moment.include_moment() }}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='assets/css/base.css') }}">
 {% endblock %}
 
 {% block title %}cloudendar{% endblock %}

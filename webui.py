@@ -4,7 +4,7 @@ import gevent.wsgi
 import os
 import werkzeug.serving
 
-from database import db_session
+from database import db_session, db_init
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.moment import Moment
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -70,7 +70,7 @@ def sse_request():
         while counter <= 10:
             sleep(1)
             print("sent message {0}".format(counter))
-            yield "data: %s\n" % counter
+            yield "data: %s\n\n" % counter
             counter += 1
     return flask.Response(message(), mimetype='text/event-stream')
     #return flask.Response(message())
