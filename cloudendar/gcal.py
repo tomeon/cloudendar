@@ -68,7 +68,7 @@ def seconds_since_epoch_str(datetime):
 
 def convert_ranges_dict(convert_func, ranges_dict):
     ranges_list = [(convert_func(t.get('start')), convert_func(t.get('end'))) for t in ranges_dict]
-    return map(lambda e: {'start': e[0], 'end': e[0]}, ranges_list)
+    return map(lambda e: {'start': e[0], 'end': e[1]}, ranges_list)
 
 
 get_ranges_sse = functools.partial(convert_ranges_dict, seconds_since_epoch_str)
@@ -175,25 +175,22 @@ def free_ranges_overlaps(calendars):
         # Create a pyicl set containing the name of the account
         # N.B. The second set of parentheses around 'account', and the comma
         # afterward, are mandatory!
-        print(account)
         account_set = Set((account,))
 
-        # Create list of tuples containing endpoints of free ranges
-        free_ranges_tuples = map(lambda e: (e.get('start'), e.get('end')), free_ranges)
-
-
-        for free_range_tuple in free_ranges_tuples:
-            print(free_range_tuple)
-            segment = overlaps.Segment(Interval(free_range_tuple), account_set)
-            #print(segment)
+        # Create a map segment for each free interval the account holder has,
+        # and add it to the map
+        for free_range in free_ranges:
+            segment = overlaps.Segment(Interval(free_range.get('start'),
+                                                free_range.get('end')), account_set)
             overlaps.add(segment)
-        #    overlaps.add(overlaps.Segment(Interval(free_range_tuple), account_set))
 
-    #for segment in overlaps:
-    #    when = segment.interval
-    #    who = segment.value
-    #    print '%s: %s\n' % (when, ', '.join(who))
-
+    # 'overlaps' now contains a mapping of free times to sets of accounts.
+    # 'overlaps', when iterated, will yield each segment.  These segments
+    # have the members 'interval' (which holds the time interval) and value
+    # (which holds the names of the accounts free at that time).  The start
+    # time for each interval can be accessed with <segment name>.interval.lower,
+    # and the end time with <segment name>.interval.upper.
+    return overlaps
 
 
 def calendars_free(timeMin, timeMax, calendars):
@@ -290,16 +287,16 @@ def main(argv):
             start_time_str, end_time_str, ['schreibm', 'looneyka', 'clampitc'])
         request = freebusy_api.query(body=query)
         freebusy = request.execute()
+
         calendars = get_calendars(freebusy)
         new_calendars = calendars_free(start_time_str, end_time_str, calendars)
-        print(new_calendars)
+        #pprint.pprint(new_calendars)
 
         new_calendars = convert_calendars(new_calendars, ['free', 'busy'],
                                           get_ranges_datetime_obj)
-
         #pprint.pprint(new_calendars)
 
-        #free_ranges_overlaps(new_calendars)
+        free_ranges_overlaps(new_calendars)
 
     except client.AccessTokenRefreshError:
         print ("The credentials have been revoked or expired, please re-run"
