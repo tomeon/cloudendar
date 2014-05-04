@@ -1,0 +1,128 @@
+#
+# Copyright John Reid 2011, 2012, 2013
+#
+
+#
+# project pyicl
+#
+
+import path ;
+
+path-constant INSTALL_DIR : Python/pyicl ;
+
+if ! $(COOKBOOK_PATH) {
+    echo "WARNING: COOKBOOK_PATH not set" ;
+}
+
+#
+# project PyICL
+#
+project PyICL
+    : requirements
+        <include>.
+        <include>$(BOOST_ROOT)
+        <variant>debug:<python-debugging>on
+        <variant>debug:<python>2.7
+        <pythonpath>$(COOKBOOK_PATH)/python
+        <pythonpath>Python
+    : usage-requirements
+        <include>.
+        <include>$(BOOST_ROOT)
+    : default-build release
+    ;
+
+
+
+#
+# Python interval container library extension
+#
+python-extension _pyicl
+    : # sources
+        src/pyicl_module.cpp
+        src/pyicl_intervals.cpp
+        src/pyicl_interval_sets.cpp
+        src/pyicl_interval_maps.cpp
+        /boost/python//boost_python
+    :
+        <linkflags>-Wl,-rpath,$(INSTALL_DIR)
+        <cxxflags>-Wno-unused-but-set-variable
+        <variant>debug:<dll-path>$(DEV_LIB_DIR)/debug
+    ;
+
+
+
+
+
+#
+# Install
+#
+install install_pyicl
+    :
+        _pyicl
+    :
+        <location>$(INSTALL_DIR)
+        <install-dependencies>off
+    ;
+    
+install install_so
+    :
+        /boost/python//boost_python
+    :
+        <location>$(INSTALL_DIR)
+    ;
+
+alias install : install_pyicl install_so ;
+    
+
+
+
+
+
+#
+# Tests
+#
+PY_TESTS =
+    interval_test
+    interval_set_test
+    interval_map_test
+    pickle_test
+    ;
+for PY_TEST in $(PY_TESTS) {
+    bpl-test $(PY_TEST) : python_test/$(PY_TEST).py _pyicl install ;
+}
+alias all_tests : $(PY_TESTS) ;
+
+
+
+
+
+#
+# Sandbox
+#
+exe sandbox
+    :
+        src/sandbox.cpp
+        /boost/date_time//boost_date_time
+    ;
+for local file in [ glob src/sandbox/*.cpp ]
+{
+    local target = [ path.basename $(file) ] ;
+    exe $(target:B) : $(file) ;
+}
+python-extension _sandbox
+    : # sources
+        src/sandbox_module.cpp
+        /boost/python//boost_python
+    :
+        <linkflags>-Wl,-rpath,$(INSTALL_DIR)
+    ;
+
+install install_sandbox
+    :
+        _sandbox
+        /boost/python//boost_python
+    :
+        <location>$(INSTALL_DIR)
+    ;
+
+

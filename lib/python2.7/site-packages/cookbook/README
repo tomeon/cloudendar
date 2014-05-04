@@ -1,0 +1,58 @@
+..
+.. Copyright John Reid 2012
+..
+.. This is a reStructuredText document. If you are reading this in text format, it can be 
+.. converted into a more readable format by using Docutils_ tools such as rst2html.
+..
+
+.. _Docutils: http://docutils.sourceforge.net/docs/user/tools.html
+
+
+
+
+==========
+ Cookbook
+==========
+---------------------------------------------
+ Some python recipes from the python cookbook
+---------------------------------------------
+
+
+
+
+Introduction
+============
+
+This python package implements some recipes from the python cookbook. Some of the recipes are copied
+verbatim from the python cookbook_ and some are modified versions of those at the cookbook. Others I
+(John Reid) have written from scratch.
+
+.. _cookbook: http://code.activestate.com/recipes/langs/python/
+
+
+
+License
+=======
+
+All novel parts of this software are released under the BSD. See the accompanying file python/cookbook/LICENSE.
+Please also refer to original code for their licensing terms.
+
+
+
+
+Prerequisites
+=============
+
+I have tested this software on python 2.6 and 2.7.
+
+
+
+
+Installation
+============
+
+The standard python package install method should work::
+
+  python setup.py build
+  python setup.py install
+
