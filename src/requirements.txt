@@ -1,3 +1,4 @@
+## The following requirements were added by pip --freeze:
 Flask==0.10.1
 Flask-Bootstrap==3.1.1.2
 Flask-Login==0.2.10
@@ -6,14 +7,17 @@ Flask-SQLAlchemy==1.0
 Flask-WTF==0.9.5
 Jinja2==2.7.2
 MarkupSafe==0.21
+# PyICL==0.6.15
 SQLAlchemy==0.9.4
 WTForms==1.0.5
 Werkzeug==0.9.4
 argparse==1.1
+cookbook==2.2.25
 dateutils==0.6.6
 gevent==1.0.1
 google-api-python-client==1.2
 greenlet==0.4.2
+httplib2==0.9
 itsdangerous==0.24
 npyscreen==3.37
 python-dateutil==2.2
