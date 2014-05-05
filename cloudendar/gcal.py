@@ -163,14 +163,17 @@ def convert_calendars(calendars, statuses, convert_func):
     return calendars_local
 
 
-def free_ranges_overlaps(calendars):
+def ranges_overlaps(calendars, status):
+    if status not in ['free', 'busy']:
+        raise KeyError("'status' argument must be either 'free' or 'busy'")
+
     calendars_local = calendars.copy()
 
     overlaps = IntervalMap()
 
     for account, ranges_dict in calendars_local.iteritems():
         # Access the list of free times
-        free_ranges = ranges_dict.get('free')
+        free_ranges = ranges_dict.get(status)
 
         # Create a pyicl set containing the name of the account
         # N.B. The second set of parentheses around 'account', and the comma
@@ -250,6 +253,19 @@ def calendars_free(timeMin, timeMax, calendars):
     return calendars_local
 
 
+def init_gcal_api(auth_host_name=None, noauth_local_webserver=None,
+auth_host_port=None, logging_level=None, storage_path='data/sample.dat'):
+    if auth_host_name is not None:
+        pass
+
+    # Check that user has a graphical display available.
+    # If not, set the flag that causes a link to the
+    # auth page to be displayed on the command line
+    if not os.environ.get('DISPLAY'):
+        pass
+        #flags.noauth_local_webserver = True
+
+
 def main(argv):
     # Parse the command-line flags.
     flags = parser.parse_args(argv[1:])
@@ -289,31 +305,25 @@ def main(argv):
         freebusy = request.execute()
 
         calendars = get_calendars(freebusy)
+        # Add list of free times to calendars
         new_calendars = calendars_free(start_time_str, end_time_str, calendars)
-        #pprint.pprint(new_calendars)
 
+        # Convert free/busy intervals from strings to datetime objects
         new_calendars = convert_calendars(new_calendars, ['free', 'busy'],
                                           get_ranges_datetime_obj)
-        #pprint.pprint(new_calendars)
 
-        free_ranges_overlaps(new_calendars)
+        # Create a PyICL map of free intervals and users free during those intervals
+        free_ranges_interval_map = ranges_overlaps(new_calendars, 'free')
+
+        for segment in free_ranges_interval_map:
+            when = segment.interval
+            who = segment.value
+            print 'Users free during listed periods: %s, %s' % (when, ', '.join(who))
 
     except client.AccessTokenRefreshError:
         print ("The credentials have been revoked or expired, please re-run"
             "the application to re-authorize")
 
 
-# For more information on the Calendar API you can visit:
-#
-#   https://developers.google.com/google-apps/calendar/firstapp
-#
-# For more information on the Calendar API Python library surface you
-# can visit:
-#
-#   https://developers.google.com/resources/api-libraries/documentation/calendar/v3/python/latest/
-#
-# For information on the Python Client Library visit:
-#
-#   https://developers.google.com/api-client-library/python/start/get_started
 if __name__ == '__main__':
     main(sys.argv)
