@@ -1,0 +1,27 @@
+###############################################################################
+# Install notes
+###############################################################################
+
+### PyICL
+By default, PyICL attempts to link against 'libboost_python-py<python
+version>'.  However, on many Linux platforms, Red Hat included, the proper
+library is just 'libboost_python'.  In order to install PyICL correctly, the
+package has to be manually configured.  This means, first, that the package
+must be downloaded with 'pip install pyicl --download <target directory>', then
+untarred.  In the file 'aksetup_helper.py', locate the definition of the class
+'BoostLibraries', and make the following edit:
+
+    if default_lib_name is None:
+        if lib_base_name == "python":
+            import sys
+            default_lib_name = "boost_python-py%d%d" % sys.version_info[:2]
+
+becomes instead:
+
+    if default_lib_name is None:
+        if lib_base_name == "python":
+            default_lib_name = "boost_python"
+
+Then invoke 'pip2 install -e <target directory>', where 'target directory' is
+the directory that the package was untarred into, and where the file 'setup.py'
+is located.

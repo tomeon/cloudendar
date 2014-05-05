@@ -1,0 +1,85 @@
+{
+    "items": [
+        {
+            "kind": "calendar#calendarListEntry",
+            "foregroundColor": "#000000",
+            "defaultReminders": [
+                {
+                    "minutes": 10,
+                    "method": "email"
+                },
+                {
+                    "minutes": 10,
+                    "method": "popup"
+                }
+            ],
+            "primary": true,
+            "colorId": "5",
+            "selected": true,
+            "notificationSettings": {
+                "notifications": [
+                    {
+                        "type": "eventCreation",
+                        "method": "email"
+                    },
+                    {
+                        "type": "eventChange",
+                        "method": "email"
+                    },
+                    {
+                        "type": "eventCancellation",
+                        "method": "email"
+                    },
+                    {
+                        "type": "eventResponse",
+                        "method": "email"
+                    }
+                ]
+            },
+            "summary": "kaylalooney@gmail.com",
+            "etag": "\\"2P51478ogOpU1KCwGtKZ5NrhIGI/qmhuRusoZruH4LmARJEzjRM4y7o\\"",
+            "backgroundColor": "#ff7537",
+            "timeZone": "America/Los_Angeles",
+            "accessRole": "owner",
+            "id": "kaylalooney@gmail.com"
+        },
+        {
+            "kind": "calendar#calendarListEntry",
+            "foregroundColor": "#000000",
+            "colorId": "16",
+            "summary": "Kristin Bates",
+            "etag": "\\"2P51478ogOpU1KCwGtKZ5NrhIGI/jAGPTaq75F9qxmEsIjU1jtVgYkE\\"",
+            "backgroundColor": "#4986e7",
+            "timeZone": "America/Los_Angeles",
+            "accessRole": "reader",
+            "id": "kristin-bates@hotmail.com"
+        },
+        {
+            "kind": "calendar#calendarListEntry",
+            "foregroundColor": "#000000",
+            "description": "Special events that I actually need to keep in mind.",
+            "colorId": "7",
+            "summary": "Christopher Horenstein",
+            "etag": "\\"2P51478ogOpU1KCwGtKZ5NrhIGI/RLFN5FxM8XSfZak9lKhLYELz7hI\\"",
+            "location": "Portland, OR",
+            "backgroundColor": "#42d692",
+            "timeZone": "America/Los_Angeles",
+            "accessRole": "reader",
+            "id": "chris.horenstein@gmail.com"
+        },
+        {
+            "kind": "calendar#calendarListEntry",
+            "foregroundColor": "#000000",
+            "description": "Holidays in United States",
+            "colorId": "17",
+            "summary": "Holidays in United States",
+            "etag": "\\"2P51478ogOpU1KCwGtKZ5NrhIGI/HmaMw31vo0LkMegTGsfTBWKsDKE\\"",
+            "backgroundColor": "#9a9cff",
+            "timeZone": "America/Los_Angeles",
+            "accessRole": "reader",
+            "id": "en.usa#holiday@group.v.calendar.google.com"
+        }
+    ],
+    "kind": "calendar#calendarList",
+    "etag": "\\"2P51478ogOpU1KCwGtKZ5NrhIGI/MRGYfuCPNx7HJr_Bhk1Oirvm5Jg\\""
+}

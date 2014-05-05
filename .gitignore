@@ -2,3 +2,6 @@
 *.ropeproject/
 *.pyc
 client_secrets.json
+/bin/
+/include/
+/lib/
