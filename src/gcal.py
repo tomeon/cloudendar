@@ -81,10 +81,6 @@ def get_calendars(freebusy):
     return freebusy.get('calendars')
 
 
-def free_times(start, end):
-    return None
-
-
 def freebusy_query(timeMin, timeMax, items, timeZone=None, groupExpansionMax=None,
                    calendarExpansionMax=None):
     query = {}
@@ -199,50 +195,39 @@ def ranges_overlaps(calendars, status):
 def calendars_free(timeMin, timeMax, calendars):
     calendars_local = calendars.copy()
 
-    # Get start and end points expressed as seconds since the Epoch
-    timeMin_sse = seconds_since_epoch_str(timeMin)
-    timeMax_sse = seconds_since_epoch_str(timeMax)
-
     # Create an IntervalSet with these times as endpoints
-    whole_range = IntervalSet(Interval(timeMin_sse, timeMax_sse))
+    whole_range = IntervalSet(Interval(timeMin, timeMax))
 
     # For each account in the calendar, transform the list of busy times into a
     # list of free times
     for account, ranges_dict in calendars_local.iteritems():
         # Access the list of busy times
-        busy_ranges_dict = ranges_dict.get('busy')
+        busy_ranges = ranges_dict.get('busy')
 
         # If the set of busy times is empty, then the account holder is free
         # for the entire interval
-        if busy_ranges_dict == []:
+        if busy_ranges == []:
             busy_ranges_intervals = IntervalSet()
         else:
             # Build a list of busy ranges expressed as a dictionary with 'start'
-            # and 'end' keys and values expressed as seconds since the epoch
-            busy_ranges_sse = get_ranges_sse(busy_ranges_dict)
-            busy_ranges_sse_tuples = map(lambda e: (e.get('start'), e.get('end')),
-                                        busy_ranges_sse)
+            # and 'end' keys
+            busy_ranges_tuples = map(lambda e: (e.get('start'), e.get('end')),
+                                     busy_ranges)
 
             # Turn this list into an IntervalSet
-            busy_ranges_intervals = disc_interval_set(busy_ranges_sse_tuples)
+            busy_ranges_intervals = disc_interval_set(busy_ranges_tuples)
 
         # Take the difference of the whole range with the set of busy times -
         # this is an IntervalSet containing the account holder's free intervals
         # with units in seconds since the Epoch
         free_ranges_intervals = whole_range - busy_ranges_intervals
-        free_ranges_sse_tuples = interval_set_to_list(free_ranges_intervals)
+        free_ranges = interval_set_to_list(free_ranges_intervals)
 
-        # Get list of tuples of datetimes in UTC
-        free_ranges = map(lambda e: (datetime.utcfromtimestamp(e[0]),
-                                     datetime.utcfromtimestamp(e[1])),
-                          free_ranges_sse_tuples)
 
         # Map list of tuples to dictionary in the form of the 'busy' dictionary
         # 'busy_ranges_dict'
-        free_ranges_dict = map(
-            lambda e: {'start': generate(e[0].replace(tzinfo=pytz.utc)),
-                       'end': generate(e[1].replace(tzinfo=pytz.utc)),},
-            free_ranges)
+        free_ranges_dict = map(lambda e: {'start': e[0], 'end': e[1]},
+                               free_ranges)
 
         # Store the dictionary of free times in the same dictionary as the
         # dictionary of busy times
@@ -293,10 +278,11 @@ def main(argv):
     service = discovery.build('calendar', 'v3', http=http)
 
     try:
-        start_time = datetime.utcnow()
+        start_time = datetime.utcnow().replace(tzinfo=pytz.utc)
         end_time = start_time + relativedelta(hours=+1)
-        start_time_str = generate(start_time.replace(tzinfo=pytz.utc))
-        end_time_str = generate(end_time.replace(tzinfo=pytz.utc))
+        end_time.replace(tzinfo=pytz.utc)
+        start_time_str = generate(start_time)
+        end_time_str = generate(end_time)
 
         freebusy_api = service.freebusy()
         query = freebusy_query(
@@ -305,12 +291,13 @@ def main(argv):
         freebusy = request.execute()
 
         calendars = get_calendars(freebusy)
-        # Add list of free times to calendars
-        new_calendars = calendars_free(start_time_str, end_time_str, calendars)
 
-        # Convert free/busy intervals from strings to datetime objects
-        new_calendars = convert_calendars(new_calendars, ['free', 'busy'],
+        # Convert busy intervals from strings to datetime objects
+        new_calendars = convert_calendars(calendars, ['busy'],
                                           get_ranges_datetime_obj)
+
+        # Add list of free times to calendars
+        new_calendars = calendars_free(start_time, end_time, calendars)
 
         # Create a PyICL map of free intervals and users free during those intervals
         free_ranges_interval_map = ranges_overlaps(new_calendars, 'free')
