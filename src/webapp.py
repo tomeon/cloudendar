@@ -97,6 +97,10 @@ def print_db():
     return flask.redirect(flask.url_for('index'))
 
 
+@app.route('/staticdir')
+def print_static():
+    print(url_for('static', filename='base.css'))
+
 @app.errorhandler(404)
 def page_not_found(e):
     return flask.render_template('404.html'), 404

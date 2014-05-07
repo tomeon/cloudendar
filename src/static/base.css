@@ -1,0 +1,39 @@
+/* Thanks to Paul Denya for the suggestion to */
+/* define classes for vertical spacing buffers: */
+/* http://pdenya.com/2013/08/08/vertical-space-in-bootstrap/ */
+.voffset  { margin-top: 2px; }
+.voffset1 { margin-top: 5px; }
+.voffset2 { margin-top: 10px; }
+.voffset3 { margin-top: 15px; }
+.voffset4 { margin-top: 20px; }
+.voffset5 { margin-top: 30px; }
+.voffset6 { margin-top: 40px; }
+.voffset7 { margin-top: 60px; }
+.voffset8 { margin-top: 80px; }
+.voffset9 { margin-top: 100px; }
+.voffset10 { margin-top: 150px; }
+
+/* Pad body to avoid overlay with fixed navbar */
+body {
+    padding-top: 70px;
+    padding-bottom: 70px;
+    margin-bottom: 0px;
+}
+
+.file-btn {
+    position: relative;
+    overflow: hidden;
+    margin: 10px;
+}
+
+.file-btn input {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    font-size: 20px;
+    opacity: 0;
+    filter: alpha(opacity=0);
+}
