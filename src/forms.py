@@ -2,6 +2,7 @@ from cgi import escape
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from flask.ext.wtf import Form
+from flask.ext.admin.form import DateTimePickerWidget
 from wtforms import (
     PasswordField,
     SelectField,
@@ -82,6 +83,7 @@ class SignupForm(Form):
 
 class EventForm(Form):
     start = DateTimeField('Start time',
+                          widget=DateTimePickerWidget,
                           validators=[InputRequired()],
                           default=date.today() + relativedelta(hour=12))
     end = DateTimeField('End time',
