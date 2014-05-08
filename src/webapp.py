@@ -1,6 +1,7 @@
 import gevent.monkey; gevent.monkey.patch_all()
 import flask
 import gevent.wsgi
+import pprint
 import werkzeug.serving
 
 from database import db_session, db_init
@@ -99,7 +100,7 @@ def print_db():
 
 @app.route('/staticdir')
 def print_static():
-    print(url_for('static', filename='base.css'))
+    print(flask.url_for('static', filename='base.css'))
 
 @app.errorhandler(404)
 def page_not_found(e):

@@ -2,7 +2,7 @@ from cgi import escape
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from flask.ext.wtf import Form
-from flask.ext.admin.form import DateTimePickerWidget
+from flask.ext.admin.form.widgets import DateTimePickerWidget
 from wtforms import (
     PasswordField,
     SelectField,
@@ -16,6 +16,7 @@ from wtforms.validators import (
     InputRequired,
     Email,
     EqualTo,
+    ValidationError,
 )
 from wtforms.widgets import html_params, HTMLString
 
@@ -63,6 +64,11 @@ class SelectFieldWithDisable(SelectField):
             yield (value, label, self.coerce(value) == self.data, value in self.disabled)
 
 
+class DateTimePickerField(DateTimeField):
+    def __call__(self, **kwargs):
+        return super(DateTimePickerField, self).__call__(class_="datetimepicker", **kwargs)
+
+
 class LoginForm(Form):
     username = StringField('Username', [InputRequired(message="Please provide your username")])
     password = PasswordField('Password', [InputRequired(message="Please provide your password")])
@@ -81,15 +87,30 @@ class SignupForm(Form):
     submit = SubmitField('Sign up')
 
 
+def compare_datetime(comp_field_name):
+    def _compare_datetime(form, field):
+        comp_field = form[comp_field_name]
+        message = "Date and time must be after %s" % (comp_field.data)
+        if field.data <= comp_field.data:
+            raise ValidationError(message)
+
+    return _compare_datetime
+
+
 class EventForm(Form):
-    start = DateTimeField('Start time',
-                          widget=DateTimePickerWidget,
+    start = DateTimePickerField('Start time',
+                          #widget=DateTimePickerWidget(),
                           validators=[InputRequired()],
-                          default=date.today() + relativedelta(hour=12))
-    end = DateTimeField('End time',
-                        validators=[InputRequired()],
-                        default=date.today() + relativedelta(hour=13))
+                          default=date.today() + relativedelta(hour=12),
+                          )
+    end = DateTimePickerField('End time',
+                              #widget=DateTimePickerWidget(),
+                              validators=[InputRequired(),
+                                          compare_datetime('start')],
+                              default=date.today() + relativedelta(hour=13),
+                              )
     desc = TextField('Description')
+    submit = SubmitField('Submit')
 
 
 class LoginObj(object):
