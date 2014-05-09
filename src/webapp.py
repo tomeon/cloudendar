@@ -1,22 +1,31 @@
 import gevent.monkey; gevent.monkey.patch_all()
 import flask
+import flask_sijax
 import gevent.wsgi
+import os
 import pprint
 import werkzeug.serving
 
 from database import db_session, db_init
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.moment import Moment
-from forms import EventForm, LoginForm, SignupForm
+from flask.ext.socketio import SocketIO, emit
+from forms import EventForm, LoginForm, SearchForm, SignupForm
 from time import sleep
 
 
 def create_app():
+    sijax_path = os.path.join('.', os.path.dirname(__file__),
+                              'static/lib/sijax')
+
     app = flask.Flask(__name__)
     app.config.update(
         SECRET_KEY='secret',
+        SIJAX_STATIC_PATH=sijax_path,
+        SIJAX_JSON_URL = '/static/lib/sijax/json2.js',
     )
 
+    flask_sijax.Sijax(app)
     Bootstrap(app)
     Moment(app)
 
@@ -24,6 +33,7 @@ def create_app():
 
 
 app = create_app()
+socketio = SocketIO(app)
 db_init()
 
 
@@ -36,6 +46,24 @@ def shutdown_db_session(exception=None):
 @app.route('/')
 def index():
     return flask.render_template('index.html')
+
+
+@flask_sijax.route(app, '/sijax')
+def hello_sijax():
+    def hello_handler(obj_response, hello_from, hello_to):
+        obj_response.alert("Hello from %s to %s" % (hello_from, hello_to))
+        obj_response.css('a', 'color', 'green')
+
+    def goodbye_handler(obj_response):
+        obj_response.alert("Goodbye, whoever you are")
+        obj_response.css('a', 'color', 'red')
+
+    if flask.g.sijax.is_sijax_request:
+        flask.g.sijax.register_callback('say_hello', hello_handler)
+        flask.g.sijax.register_callback('say_goodbye', goodbye_handler)
+        return flask.g.sijax.process_request()
+
+    return flask.render_template('hello.html')
 
 
 @app.route('/user/<name>')
@@ -74,6 +102,17 @@ def event_form():
     return flask.render_template('event.html', form=form)
 
 
+@app.route('/search', methods=["GET", "POST"])
+def search_form():
+    form = SearchForm()
+    if form.validate_on_submit():
+        flask.flash("Success!")
+        print(form.start.data)
+        print(form.end.data)
+        return flask.redirect(flask.url_for('index'))
+    return flask.render_template('event.html', form=form)
+
+
 @app.route('/source')
 def sse_request():
     def message():
@@ -98,9 +137,27 @@ def print_db():
     return flask.redirect(flask.url_for('index'))
 
 
-@app.route('/staticdir')
-def print_static():
-    print(flask.url_for('static', filename='base.css'))
+@app.route('/test_socketio')
+def test_socketio():
+    return flask.render_template('test.html')
+
+@socketio.on('my event', namespace='/test')
+def test_message(message):
+    emit('my response', {'data': message['data']})
+
+
+@socketio.on('my broadcast event', namespace='/test')
+def test_broadcast(message):
+    emit('my response', {'data': message['data']}, broadcast=True)
+
+
+@socketio.on('connect', namespace='/test')
+def test_connect():
+    emit('my response', {'data': 'Connected'})
+
+@socketio.on('disconnect', namespace='/test')
+def test_disconnect():
+    print('Client disconnected')
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -116,8 +173,9 @@ def internal_server_error(e):
 @werkzeug.serving.run_with_reloader
 def run_server():
     app.debug = True
-    http_server = gevent.wsgi.WSGIServer(('', 5000), app)
-    http_server.serve_forever()
+    socketio.run(app)
+    #http_server = gevent.wsgi.WSGIServer(('', 5000), app)
+    #http_server.serve_forever()
 
 
 if __name__ == "__main__":

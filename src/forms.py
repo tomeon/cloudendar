@@ -2,10 +2,11 @@ from cgi import escape
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from flask.ext.wtf import Form
-from flask.ext.admin.form.widgets import DateTimePickerWidget
 from wtforms import (
     PasswordField,
+    RadioField,
     SelectField,
+    SelectMultipleField,
     StringField,
     SubmitField,
     TextField,
@@ -110,6 +111,54 @@ class EventForm(Form):
                               default=date.today() + relativedelta(hour=13),
                               )
     desc = TextField('Description')
+    submit = SubmitField('Submit')
+
+dummy_choices = [(e, e) for e in ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Frank',
+                                  'Gertrude', 'Hiram', 'Ilse', 'Jon', 'Karen',
+                                  'Lon', 'Matilda', 'Nick', 'Oprah', 'Pete',
+                                  'Quinn', 'Rob', 'Sarah', 'Ted', 'Ursula',
+                                  'Von', 'Wendy', 'Xavier', 'Zelda']]
+
+
+# From http://wtforms.readthedocs.org/en/latest/widgets.html
+def select_multi_checkbox(field, ul_class='', **kwargs):
+    kwargs.setdefault('type', 'checkbox')
+    field_id = kwargs.pop('id', field.id)
+    html = [u'<ul %s>' % html_params(id=field_id, class_=ul_class)]
+    for value, label, checked in field.iter_choices():
+        choice_id = u'%s-%s' % (field_id, value)
+        options = dict(kwargs, name=field.name, value=value, id=choice_id)
+        if checked:
+            options['checked'] = 'checked'
+        html.append(u'<li><input %s /> ' % html_params(**options))
+        html.append(u'<label for="%s">%s</label></li>' % (field_id, label))
+    html.append(u'</ul>')
+    return u''.join(html)
+
+
+class SearchForm(Form):
+    start = DateTimePickerField('Start time',
+                          #widget=DateTimePickerWidget(),
+                          validators=[InputRequired()],
+                          default=date.today() + relativedelta(hour=12),
+                          )
+    end = DateTimePickerField('End time',
+                              #widget=DateTimePickerWidget(),
+                              validators=[InputRequired(),
+                                          compare_datetime('start')],
+                              default=date.today() + relativedelta(hour=13),
+                              )
+    users = SelectMultipleField('Users',
+                                widget=select_multi_checkbox,
+                                validators=[InputRequired()],
+                                choices=dummy_choices,
+                                )
+    search_type = RadioField('Narrow by',
+                             validators=[InputRequired()],
+                             choices=[('open', 'All open times for user(s)'),
+                                      ('duration', 'Users free for duration')],
+                             default='open',
+                             )
     submit = SubmitField('Submit')
 
 
