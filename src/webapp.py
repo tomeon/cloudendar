@@ -60,7 +60,7 @@ def signup_form():
         flask.flash("Success!")
         flask.session['username'] = form.username.data
         return flask.redirect(flask.url_for('index'))
-    return flask.render_template('submit.html', form=form)
+    return flask.render_template('signup.html', form=form)
 
 
 @app.route('/add', methods=["GET", "POST"])
