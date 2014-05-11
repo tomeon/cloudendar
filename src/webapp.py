@@ -4,13 +4,17 @@ import flask_sijax
 import gevent.wsgi
 import os
 import pprint
+import time
 import werkzeug.serving
 
 from database import db_session, db_init
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.moment import Moment
-from flask.ext.socketio import SocketIO, emit
+from flask.ext.socketio import SocketIO, emit, join_room, leave_room
 from forms import EventForm, LoginForm, SearchForm, SignupForm
+from wtforms import SelectField
+from wtforms.validators import InputRequired
+from threading import Thread
 from time import sleep
 
 
@@ -48,24 +52,6 @@ def index():
     return flask.render_template('index.html')
 
 
-@flask_sijax.route(app, '/sijax')
-def hello_sijax():
-    def hello_handler(obj_response, hello_from, hello_to):
-        obj_response.alert("Hello from %s to %s" % (hello_from, hello_to))
-        obj_response.css('a', 'color', 'green')
-
-    def goodbye_handler(obj_response):
-        obj_response.alert("Goodbye, whoever you are")
-        obj_response.css('a', 'color', 'red')
-
-    if flask.g.sijax.is_sijax_request:
-        flask.g.sijax.register_callback('say_hello', hello_handler)
-        flask.g.sijax.register_callback('say_goodbye', goodbye_handler)
-        return flask.g.sijax.process_request()
-
-    return flask.render_template('hello.html')
-
-
 @app.route('/user/<name>')
 def user(name):
     return flask.render_template('user.html', name=name)
@@ -99,7 +85,7 @@ def event_form():
         print(form.start.data)
         print(form.end.data)
         return flask.redirect(flask.url_for('index'))
-    return flask.render_template('event.html', form=form)
+    return flask.render_template('search.html', form=form)
 
 
 @app.route('/search', methods=["GET", "POST"])
@@ -110,86 +96,37 @@ def search_form():
         print(form.start.data)
         print(form.end.data)
         return flask.redirect(flask.url_for('index'))
-    return flask.render_template('event.html', form=form)
+    return flask.render_template('search.html', form=form)
 
 
-@app.route('/source')
-def sse_request():
-    def message():
-        counter = 0
-        while counter <= 10:
-            sleep(1)
-            print("sent message {0}".format(counter))
-            yield "data: %s\n\n" % counter
-            counter += 1
-    return flask.Response(message(), mimetype='text/event-stream')
-    # return flask.Response(message())
+dummy_choices = [(e, e) for e in ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Frank',
+                                  'Gertrude', 'Hiram', 'Ilse', 'Jon', 'Karen',
+                                  'Lon', 'Matilda', 'Nick', 'Oprah', 'Pete',
+                                  'Quinn', 'Rob', 'Sarah', 'Ted', 'Ursula',
+                                  'Von', 'Wendy', 'Xavier', 'Zelda']]
 
 
-@app.route('/test')
-def page():
-    return flask.render_template('sse.html')
+def search_user(num):
+    label = "User %d" % num;
+    return SelectField(label,
+                       validators=[InputRequired()],
+                       choices=dummy_choices,
+                       )
 
 
-@app.route('/printdb')
-def print_db():
-    print(db_session)
-    return flask.redirect(flask.url_for('index'))
-
-
-@app.route('/test_socketio')
-def test_socketio():
-    return flask.render_template('test.html')
-
-@socketio.on('my event', namespace='/test')
-def test_message(message):
-    flask.session['receive_count'] = flask.session.get('receive_count', 0) + 1
-    emit('my response',
-         {'data': message['data'], 'count': flask.session['receive_count']})
-
-
-@socketio.on('my broadcast event', namespace='/test')
-def test_message(message):
-    flask.session['receive_count'] = flask.session.get('receive_count', 0) + 1
-    emit('my response',
-         {'data': message['data'], 'count': flask.session['receive_count']},
-         broadcast=True)
-
-
-@socketio.on('join', namespace='/test')
-def join(message):
-    join_room(message['room'])
-    flask.session['receive_count'] = flask.session.get('receive_count', 0) + 1
-    emit('my response',
-         {'data': 'In rooms: ' + ', '.join(request.namespace.rooms),
-          'count': flask.session['receive_count']})
-
-
-@socketio.on('leave', namespace='/test')
-def leave(message):
-    leave_room(message['room'])
-    flask.session['receive_count'] = flask.session.get('receive_count', 0) + 1
-    emit('my response',
-         {'data': 'In rooms: ' + ', '.join(request.namespace.rooms),
-          'count': flask.session['receive_count']})
-
-
-@socketio.on('my room event', namespace='/test')
-def send_room_message(message):
-    flask.session['receive_count'] = flask.session.get('receive_count', 0) + 1
-    emit('my response',
-        {'data': message['data'], 'count': flask.session['receive_count']},
-        room=message['room'])
-
-
-@socketio.on('connect', namespace='/test')
-def test_connect():
-    emit('my response', {'data': 'Connected', 'count': 0})
-
-
-@socketio.on('disconnect', namespace='/test')
-def test_disconnect():
-    print('Client disconnected')
+@app.route('/expand')
+def expand_form(users=1):
+    class ExpandForm(SearchForm):
+        pass
+    for user in range(1, users + 1):
+        setattr(ExpandForm, "user%d" % user, search_user(user))
+    form = ExpandForm()
+    if form.validate_on_submit():
+        flask.flash("Success!")
+        print(form.start.data)
+        print(form.end.data)
+        return flask.redirect(flask.url_for('index'))
+    return flask.render_template('search.html', form=form)
 
 
 @app.errorhandler(404)
@@ -206,6 +143,7 @@ def internal_server_error(e):
 @werkzeug.serving.run_with_reloader
 def run_server():
     app.debug = True
+    #Thread(target=background_thread).start()
     socketio.run(app)
     #http_server = gevent.wsgi.WSGIServer(('', 5000), app)
     #http_server.serve_forever()

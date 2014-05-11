@@ -2,10 +2,14 @@
 {% import "bootstrap/wtf.html" as wtf %}
 
 {% block page_content %}
-{{ macros.page_header("Add an event") }}
+{{ macros.page_header("Find free times and users") }}
 
 <div class="row">
-    {{ wtf.quick_form(form, button_map={'submit': "primary"}) }}
+    <div class="col-xs-6 col-md-4">
+        {{ wtf.quick_form(form, button_map={'submit': "primary"}) }}
+    </div>
+    <div class="col-xs-12 col-md-8">
+    </div>
 </div>
 
 {% endblock %}

@@ -9,7 +9,7 @@ from wtforms import (
     SelectMultipleField,
     StringField,
     SubmitField,
-    TextField,
+    TextAreaField,
 )
 from wtforms.compat import text_type
 from wtforms.ext.dateutil.fields import DateTimeField
@@ -110,7 +110,7 @@ class EventForm(Form):
                                           compare_datetime('start')],
                               default=date.today() + relativedelta(hour=13),
                               )
-    desc = TextField('Description')
+    desc = TextAreaField('Description')
     submit = SubmitField('Submit')
 
 dummy_choices = [(e, e) for e in ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Frank',
@@ -148,11 +148,12 @@ class SearchForm(Form):
                                           compare_datetime('start')],
                               default=date.today() + relativedelta(hour=13),
                               )
-    users = SelectMultipleField('Users',
-                                widget=select_multi_checkbox,
-                                validators=[InputRequired()],
-                                choices=dummy_choices,
-                                )
+    users = TextAreaField('Users', validators=[InputRequired()])
+    #users = SelectMultipleField('Users',
+    #                            widget=select_multi_checkbox,
+    #                            validators=[InputRequired()],
+    #                            choices=dummy_choices,
+    #                            )
     search_type = RadioField('Narrow by',
                              validators=[InputRequired()],
                              choices=[('open', 'All open times for user(s)'),
