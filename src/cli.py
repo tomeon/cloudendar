@@ -2,10 +2,11 @@ import datetime
 import simplejson as json
 
 import npyscreen
+from npyscreen import wgtextbox
 import curses
 
 # google calendar datetime format
-GCAL_DATETIME_FORMAT = '%Y-%m-%dT%X-07:00'  # offset to PST
+GCAL_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S-07:00'  # offset to PST
 
 # user-friendly datetime format
 USER_DATETIME_FORMAT = '%x at %X'
@@ -45,7 +46,7 @@ def get_free_busy(user, start_time, end_time):
         flow = flow_from_clientsecrets('client_secret.json',
                                        scope='https://www.googleapis.com/auth/calendar',
                                        redirect_uri='http://example.com/auth_return')
-        storage = Storage('test_files/calendarsettings.dat')
+        storage = Storage('calendarsettings.dat')
         credentials = run(flow, storage)
         http = httplib2.Http()
         http = credentials.authorize(http)
@@ -55,12 +56,12 @@ def get_free_busy(user, start_time, end_time):
         freebusy = request.execute()
     else:
         # use test data for now
-        with open('test_files/calendar_freebusy_example.json') as f:
+        with open('calendar_freebusy_example.json') as f:
             freebusy = json.loads(f.read())
 
     # convert the start/end times to datetimes
     calendars = freebusy['calendars']
-    busy = calendars[calendars.keys()[0]]['busy']
+    busy = calendars[list(calendars.keys())[0]]['busy']
 
     for interval in busy:
         interval['start'] = datetime.datetime.strptime(interval['start'], GCAL_DATETIME_FORMAT)
@@ -227,13 +228,28 @@ class AvailabilityList(npyscreen.MultiLine):
 
 
 class ActionControllerUserAvailability(npyscreen.ActionControllerSimple):
+    """There are two general modes for querying attendance and availability.
+    Attendance mode provides the user with a list of the users who are available
+    for the entire specified window of time.
+    Availability mode provides the user with a list of the free times that the
+    specified users would all be available.
+    """
     def create(self):
+        self.parent.mode = 'attendance'
         self.add_remove_user_command = ':user '
         self.add_action('^' + self.add_remove_user_command + '.*',
                         self.set_users,
                         live=False)
         self.add_action('^:start', self.set_start_time, live=False)
         self.add_action('^:end', self.set_end_time, live=False)
+
+        self.add_action('^:attendance', self.set_mode, live=False)
+        self.add_action('^:availability', self.set_mode, live=False)
+
+    def set_mode(self, command_line, widget_proxy, live):
+        self.parent.mode = command_line[1:]
+        self.update_values()
+        self.parent.update_status()
 
     def set_users(self, command_line, widget_proxy, live):
         command = command_line[len(self.add_remove_user_command):]
@@ -246,8 +262,10 @@ class ActionControllerUserAvailability(npyscreen.ActionControllerSimple):
             self.parent.users.append(command)
 
         # redraw the status
+        self.update_values()
         self.parent.update_status()
 
+    def update_values(self):
         if len(self.parent.users) == 1:
             user_intervals_dict = get_user_free_intervals(
                 self.parent.users,
@@ -256,19 +274,35 @@ class ActionControllerUserAvailability(npyscreen.ActionControllerSimple):
             )
             pretty_user_intervals = get_pretty_intervals(user_intervals_dict)
             values = pretty_user_intervals[self.parent.users[0]]
-        else:
-            values = find_possible_attendees(self.parent.users,
-                                             self.parent.start_time,
-                                             self.parent.end_time)
-            if not values:
-                message = 'No users are available during the specified window.'
-                values.append(message)
 
-        # update the main widget with the gathered data
+        elif self.parent.mode == 'attendance':
+            values = self.display_attendance_mode()
+        elif self.parent.mode == 'availability':
+            values = self.display_availability_mode()
+
         self.parent.wMain.values = values
-
-        # redraw the interface
         self.parent.wMain.display()
+
+    def display_attendance_mode(self):
+        values = find_possible_attendees(self.parent.users,
+                                         self.parent.start_time,
+                                         self.parent.end_time)
+        if not values:
+            message = 'No users are available during the specified window.'
+            values.append(message)
+
+        values.insert(0, 'Currently in attendance mode, showing who can attend at a specified time. (:availability to switch)')
+        return values
+
+    def display_availability_mode(self):
+        values = []
+
+        if not values:
+            message = 'No open windows of time shared by all users during the specified window.'
+            values.append(message)
+
+        values.insert(0, 'Currently in availability mode, showing windows of time all users are available. (:attendance to switch)')
+        return values
 
     def set_start_time(self, command_line, widget_proxy, live):
         def set_parent_start_time(user_time):
@@ -340,12 +374,21 @@ class UserAvailabilityForm(npyscreen.FormMuttActiveTraditional):
         self.update_status()
 
     def update_status(self):
-        self.wStatus1.value = 'User Availability'
-
         if self.users:
+            if len(self.users) == 1:
+                # if there is only one user, the application defaults to just
+                # showing their open windows of time during the specified window
+                self.wStatus1.value = 'Open times'
+            else:
+                # there is more than one user, so tailor the text to the current
+                # mode
+                self.wStatus1.value = 'User {}'.format(self.mode)
             self.wStatus1.value += ' of ' + ','.join(self.users)
+        else:
+            self.wStatus1.value = 'Enter :user <user> to get started.'
 
         self.wStatus1.value += '    (:user <user> to add/remove a user)'
+        self.wStatus1.value += '  mode: {}'.format(self.mode)
 
         status = 'Time Window - '
         status += 'Start: ' + self.start_time.strftime(USER_DATETIME_FORMAT)
