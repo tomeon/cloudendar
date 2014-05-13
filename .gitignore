@@ -1,6 +1,7 @@
 *.egg-info/
 *.ropeproject/
 *.pyc
+sample.dat
 client_secrets.json
 /bin/
 /include/
