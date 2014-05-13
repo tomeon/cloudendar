@@ -57,19 +57,19 @@ FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS,
 
 
 def convert_ranges_dict(convert_func, ranges_list):
-"""
-Pre:
-    - convert_func is a function that takes datetime strings of the sort
-      returned by a freebusy query and returns some value (usually a
-      transformation of the string into some other representation of
-      datetime).
-    - ranges_list is a list of dictionaries of the sort that is returned as the
-      'busy' member of a freebusy query dictionary.  At minimum, it must
-      have values for 'start' and 'end'.
-Post:
-    - Returns a list of dictionaries, each of which has keys 'start' and
-      'end'.
-"""
+    """
+    Pre:
+        - convert_func is a function that takes datetime strings of the sort
+          returned by a freebusy query and returns some value (usually a
+          transformation of the string into some other representation of
+          datetime).
+        - ranges_list is a list of dictionaries of the sort that is returned as the
+          'busy' member of a freebusy query dictionary.  At minimum, it must
+          have values for 'start' and 'end'.
+    Post:
+        - Returns a list of dictionaries, each of which has keys 'start' and
+          'end'.
+    """
     ranges_list = [(convert_func(t.get('start')), convert_func(t.get('end')))
                    for t in ranges_list]
     return map(lambda e: {'start': e[0], 'end': e[1]}, ranges_list)
@@ -127,12 +127,12 @@ def build_freebusy_query(timeMin, timeMax, onids, timeZone=None,
 
 
 def disc_interval_set(pairs):
-"""
-Pre:
-    - pairs is a list of two-tuples.
-Post:
-    Returns an IntervalSet containing each of the value sets in 'pairs'.
-"""
+    """
+    Pre:
+        - pairs is a list of two-tuples.
+    Post:
+        Returns an IntervalSet containing each of the value sets in 'pairs'.
+    """
     disc_interval = IntervalSet()
     for l, r in pairs:
         disc_interval.add(Interval(l, r))
@@ -140,25 +140,25 @@ Post:
 
 
 def interval_set_to_list(interval_set):
-"""
-Pre:
-    - interval_set is an IntervalSet.
-Post:
-    - returns a list of two-tuples for each interval in interval_set.
-"""
+    """
+    Pre:
+        - interval_set is an IntervalSet.
+    Post:
+        - returns a list of two-tuples for each interval in interval_set.
+    """
     return map(lambda elem: (elem.lower, elem.upper), interval_set)
 
 
 def convert_calendars(calendars, statuses, convert_func):
-""" Pre:
-    -   'calendars' is a list of calendars of the same structure as those
-        extracted from the dictionary returned by
-        apiclient.discovery.build().freebusy.query().execute()
-    -   'statuses' is either 'free' or 'busy'
-    -   'convert_func' is a function that takes a list of dictionaries of
-        the form {'start': <RFC3339 string>, 'busy': <RFC3339 string>} and
-        returns a list of dictionaries of the same form.
-"""
+    """ Pre:
+        -   'calendars' is a list of calendars of the same structure as those
+            extracted from the dictionary returned by
+            apiclient.discovery.build().freebusy.query().execute()
+        -   'statuses' is either 'free' or 'busy'
+        -   'convert_func' is a function that takes a list of dictionaries of
+            the form {'start': <RFC3339 string>, 'busy': <RFC3339 string>} and
+            returns a list of dictionaries of the same form.
+    """
     if not statuses:
         raise ValueError(
             "'statuses' list must contain either 'free', 'busy', or both")
@@ -195,10 +195,10 @@ def convert_calendars(calendars, statuses, convert_func):
 
 
 def ranges_overlaps(calendars, status):
-"""
-Pre:
-    - calendars :
-"""
+    """
+    Pre:
+        - calendars :
+    """
     if status not in ['free', 'busy']:
         raise KeyError("'status' argument must be either 'free' or 'busy'")
 
