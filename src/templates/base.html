@@ -14,10 +14,6 @@
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js"></script>
-<script src="{{ url_for('static', filename='lib/sijax/sijax.js') }}"></script>
-<script type="text/javascript">
-    {{ g.sijax.get_js()|safe }}
-</script>
 {{ moment.include_moment() }}
 {% endblock %}
 

@@ -100,12 +100,10 @@ def compare_datetime(comp_field_name):
 
 class EventForm(Form):
     start = DateTimePickerField('Start time',
-                          #widget=DateTimePickerWidget(),
                           validators=[InputRequired()],
                           default=date.today() + relativedelta(hour=12),
                           )
     end = DateTimePickerField('End time',
-                              #widget=DateTimePickerWidget(),
                               validators=[InputRequired(),
                                           compare_datetime('start')],
                               default=date.today() + relativedelta(hour=13),
@@ -149,11 +147,6 @@ class SearchForm(Form):
                               default=date.today() + relativedelta(hour=13),
                               )
     users = TextAreaField('Users', validators=[InputRequired()])
-    #users = SelectMultipleField('Users',
-    #                            widget=select_multi_checkbox,
-    #                            validators=[InputRequired()],
-    #                            choices=dummy_choices,
-    #                            )
     search_type = RadioField('Narrow by',
                              validators=[InputRequired()],
                              choices=[('open', 'All open times for user(s)'),

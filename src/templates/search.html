@@ -6,6 +6,14 @@
 
 <div class="row">
     <div class="col-xs-6 col-md-4">
+        <form role="form" id="search">
+            <div class="form-group">
+                <label for="onid">ONID</label>
+                <input type="email" class = "form-control" name="onid" id="onid" placeholder="Search ONIDs">
+            </div>
+            <button type="submit" class="btn btn-default">Search users</button>
+        </form>
+        <div class="voffset4"></div>
         {{ wtf.quick_form(form, button_map={'submit': "primary"}) }}
     </div>
     <div class="col-xs-12 col-md-8">
@@ -25,8 +33,22 @@
 <script type="text/javascript">
 (function($, document, window) {
     $(document).ready(function() {
+        // Attach datetimepicker widgets to start and end time fields
         $("#start").datetimepicker();
         $("#end").datetimepicker();
+
+        var socket = io.connect('http://' + document.domain + ':' +
+            location.port + '/search');
+
+        socket.on('result', function(msg) {
+            alert(msg.data);
+            //$("#users").append(msg.data + ", ");
+        });
+
+        $("#search").submit(function (event) {
+            socket.emit('search', {data: $("#onid").val()});
+            event.preventDefault();
+        });
     });
 })(jQuery, document, window);
 </script>

@@ -337,7 +337,6 @@ def execute_freebusy_query(service, start_time, end_time, users):
 def main(argv):
     # Parse the command-line flags.
     flags = parser.parse_args(argv[1:])
-    print(flags)
 
     # Check that user has a graphical display available.
     # If not, set the flag that causes a link to the

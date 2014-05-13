@@ -1,37 +1,67 @@
-import gevent.monkey; gevent.monkey.patch_all()
+#import gevent.monkey; gevent.monkey.patch_all()
 import flask
-import flask_sijax
 import gevent.wsgi
 import os
 import pprint
+import re
 import time
 import werkzeug.serving
 
 from database import db_session, db_init
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.moment import Moment
-from flask.ext.socketio import SocketIO, emit, join_room, leave_room
+from flask.ext.socketio import SocketIO, emit
 from forms import EventForm, LoginForm, SearchForm, SignupForm
 from wtforms import SelectField
 from wtforms.validators import InputRequired
 from threading import Thread
 from time import sleep
+from whoosh import index
+from whoosh.fields import Schema, TEXT
+from whoosh.analysis import StemmingAnalyzer
+from whoosh.qparser import QueryParser, MultifieldParser
+
+
+schema = Schema(name=TEXT(stored=True), value=TEXT(stored=True))
+if not os.path.exists('data'):
+    os.mkdir('data')
+
+
+ix = index.create_in('data', schema=schema, indexname="dummy_choices")
+#if not index.exists_in('data', indexname="dummy_choices"):
+#    ix = index.create_in('data', schema=schema, indexname="dummy_choices")
+#else:
+#    ix = index.open_dir('data', indexname="dummy_choices")
+
+
+dummy_users = ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Frank', 'Gertrude',
+                'Hiram', 'Ilse', 'Jon', 'Karen', 'Lon', 'Matilda', 'Nick', 'Oprah', 'Pete',
+                'Quinn', 'Rob', 'Sarah', 'Ted', 'Ursula', 'Von', 'Wendy', 'Xavier', 'Zelda']
+dummy_choices = [(unicode(e), unicode(e)) for e in dummy_users]
+
+
+def index_choices(ix, choices):
+    with ix.writer() as writer:
+        for name, value in choices:
+            writer.add_document(name=name, value=value)
+
+
+def search_index(ix, term):
+    qp = MultifieldParser(['name', 'value'], schema=schema)
+    q = qp.parse(term)
+    with ix.searcher() as searcher:
+        return searcher.search(q, limit=20)
 
 
 def create_app():
-    sijax_path = os.path.join('.', os.path.dirname(__file__),
-                              'static/lib/sijax')
-
     app = flask.Flask(__name__)
     app.config.update(
         SECRET_KEY='secret',
-        SIJAX_STATIC_PATH=sijax_path,
-        SIJAX_JSON_URL = '/static/lib/sijax/json2.js',
     )
 
-    flask_sijax.Sijax(app)
     Bootstrap(app)
     Moment(app)
+    index_choices(ix, dummy_choices)
 
     return app
 
@@ -88,6 +118,17 @@ def event_form():
     return flask.render_template('search.html', form=form)
 
 
+@app.route('/results')
+def print_results():
+    res = search_index(ix, "o")
+    pprint.pprint(res)
+    pprint.pprint(ix)
+    for item in res:
+        print(item)
+    print(res)
+    return "Hello, world!"
+
+
 @app.route('/search', methods=["GET", "POST"])
 def search_form():
     form = SearchForm()
@@ -99,11 +140,23 @@ def search_form():
     return flask.render_template('search.html', form=form)
 
 
-dummy_choices = [(e, e) for e in ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Frank',
-                                  'Gertrude', 'Hiram', 'Ilse', 'Jon', 'Karen',
-                                  'Lon', 'Matilda', 'Nick', 'Oprah', 'Pete',
-                                  'Quinn', 'Rob', 'Sarah', 'Ted', 'Ursula',
-                                  'Von', 'Wendy', 'Xavier', 'Zelda']]
+@socketio.on('search', namespace='/search')
+def get_possibles(msg):
+    onid = msg.get('data')
+    print(onid)
+    if onid is None:
+        ret = "Empty email"
+    else:
+        match = re.match(r'(.+)@.+', onid)
+        user = match.group(1)
+        if user is None:
+            ret = "Invalid email"
+        hits = filter(lambda e: e == user, dummy_users)
+        if len(hits) > 0:
+            ret = "Found match: {0}".format(hits[0])
+        else:
+            ret = "No such user"
+    emit('result', {'data': ret})
 
 
 def search_user(num):
@@ -140,14 +193,15 @@ def internal_server_error(e):
 
 
 # This needs to be at the bottom of the file, just before 'if __name__ ...'
-@werkzeug.serving.run_with_reloader
+#@werkzeug.serving.run_with_reloader
 def run_server():
-    app.debug = True
+    #app.debug = True
     #Thread(target=background_thread).start()
-    socketio.run(app)
     #http_server = gevent.wsgi.WSGIServer(('', 5000), app)
     #http_server.serve_forever()
+    return
 
 
 if __name__ == "__main__":
-    run_server()
+    app.debug = True
+    socketio.run(app)
