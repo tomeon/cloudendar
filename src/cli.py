@@ -6,7 +6,7 @@ from npyscreen import wgtextbox
 import curses
 
 # google calendar datetime format
-GCAL_DATETIME_FORMAT = '%Y-%m-%dT%X-07:00'  # offset to PST
+GCAL_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S-07:00'  # offset to PST
 
 # user-friendly datetime format
 USER_DATETIME_FORMAT = '%x at %X'
