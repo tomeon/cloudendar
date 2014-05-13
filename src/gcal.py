@@ -56,62 +56,27 @@ FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS,
         message=tools.message_if_missing(CLIENT_SECRETS))
 
 
-def convert_ranges_dict(convert_func, ranges_list):
-    """
-    Pre:
-        - convert_func is a function that takes datetime strings of the sort
-          returned by a freebusy query and returns some value (usually a
-          transformation of the string into some other representation of
-          datetime).
-        - ranges_list is a list of dictionaries of the sort that is returned as the
-          'busy' member of a freebusy query dictionary.  At minimum, it must
-          have values for 'start' and 'end'.
-    Post:
-        - Returns a list of dictionaries, each of which has keys 'start' and
-          'end'.
-    """
+def convert_ranges_dict(convert_func, ranges_dict):
     ranges_list = [(convert_func(t.get('start')), convert_func(t.get('end')))
-                   for t in ranges_list]
+                   for t in ranges_dict]
     return map(lambda e: {'start': e[0], 'end': e[1]}, ranges_list)
 
 
 get_ranges_datetime_obj = functools.partial(convert_ranges_dict, parse)
-""" Wrapper for convert_ranges_dict() for use in map(), filter(), or another
-such function that requires a function of one argument """
 
 
 def get_calendars(freebusy):
     return freebusy.get('calendars')
 
 
-# TODO: work on exception handling
-def build_freebusy_query(timeMin, timeMax, onids, timeZone=None,
-                         groupExpansionMax=None, calendarExpansionMax=None,
-                         suffix=EMAIL_POSTFIX):
-    """
-    (Adapted in part from Google's Freebusy docs at
-    https://developers.google.com/google-apps/calendar/v3/reference/freebusy/query)
-
-    Pre :
-        - timeMin and timeMax are datetime strings of the form '%Y-%m-%dT%X',
-          which is the format required by freebusy queries.
-        - onids is a list of ONID usernames.
-        - timeZone is a string representing a time zone.  Defaults to UTC.
-        - groupExpansionMax is the maximal number of calendar identifiers to be
-          provided for a single group.  Optional.  An error will be returned
-          for a group with more members than this value.
-        - calendarExpansionMax is the maximal number of calendars for which FreeBusy information is to be
-          provided. Optional.
-    Post:
-        - Success: returns a freebusy query object
-        - Failure: raises an exception if timeMin and timeMax are not specified
-
-    """
+def build_freebusy_query(timeMin, timeMax, items, timeZone=None,
+                         groupExpansionMax=None, calendarExpansionMax=None):
     query = {}
+    suffix = "@onid.oregonstate.edu"
     try:
         query['timeMin'] = timeMin
         query['timeMax'] = timeMax
-        query['onids'] = [{'id': onid + suffix} for onid in onids]
+        query['items'] = [{'id': onid + suffix} for onid in items]
 
         if timeZone is not None:
             query['timeZone'] = timeZone
@@ -127,12 +92,6 @@ def build_freebusy_query(timeMin, timeMax, onids, timeZone=None,
 
 
 def disc_interval_set(pairs):
-    """
-    Pre:
-        - pairs is a list of two-tuples.
-    Post:
-        Returns an IntervalSet containing each of the value sets in 'pairs'.
-    """
     disc_interval = IntervalSet()
     for l, r in pairs:
         disc_interval.add(Interval(l, r))
@@ -140,12 +99,6 @@ def disc_interval_set(pairs):
 
 
 def interval_set_to_list(interval_set):
-    """
-    Pre:
-        - interval_set is an IntervalSet.
-    Post:
-        - returns a list of two-tuples for each interval in interval_set.
-    """
     return map(lambda elem: (elem.lower, elem.upper), interval_set)
 
 
@@ -157,8 +110,7 @@ def convert_calendars(calendars, statuses, convert_func):
         -   'statuses' is either 'free' or 'busy'
         -   'convert_func' is a function that takes a list of dictionaries of
             the form {'start': <RFC3339 string>, 'busy': <RFC3339 string>} and
-            returns a list of dictionaries of the same form.
-    """
+            returns a list of dictionaries of the same form. """
     if not statuses:
         raise ValueError(
             "'statuses' list must contain either 'free', 'busy', or both")
@@ -195,10 +147,6 @@ def convert_calendars(calendars, statuses, convert_func):
 
 
 def ranges_overlaps(calendars, status):
-    """
-    Pre:
-        - calendars :
-    """
     if status not in ['free', 'busy']:
         raise KeyError("'status' argument must be either 'free' or 'busy'")
 
