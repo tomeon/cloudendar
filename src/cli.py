@@ -61,7 +61,7 @@ def get_free_busy(user, start_time, end_time):
 
     # convert the start/end times to datetimes
     calendars = freebusy['calendars']
-    busy = calendars[calendars.keys()[0]]['busy']
+    busy = calendars[list(calendars.keys())[0]]['busy']
 
     for interval in busy:
         interval['start'] = datetime.datetime.strptime(interval['start'], GCAL_DATETIME_FORMAT)
