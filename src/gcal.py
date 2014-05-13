@@ -111,7 +111,7 @@ def build_freebusy_query(timeMin, timeMax, onids, timeZone=None,
     try:
         query['timeMin'] = timeMin
         query['timeMax'] = timeMax
-        query['onids'] = [{'id': onid + suffix} for onid in onids]
+        query['items'] = [{'id': onid + suffix} for onid in onids]
 
         if timeZone is not None:
             query['timeZone'] = timeZone
@@ -163,13 +163,13 @@ def convert_calendars(calendars, statuses, convert_func):
         raise ValueError(
             "'statuses' list must contain either 'free', 'busy', or both")
 
+    # Copy the calendar so that we don't accidentally modify something we
+    # shouldn't
+    calendars_local = calendars.copy()
+
     for status in statuses:
         if status not in ['free', 'busy']:
             raise KeyError("'status' argument must be either 'free' or 'busy'")
-
-        # Copy the calendar so that we don't accidentally modify something we
-        # shouldn't
-        calendars_local = calendars.copy()
 
         for account, range_dict in calendars_local.iteritems():
             # Access the list of busy times
@@ -337,7 +337,6 @@ def execute_freebusy_query(service, start_time, end_time, users):
 def main(argv):
     # Parse the command-line flags.
     flags = parser.parse_args(argv[1:])
-    print(flags)
 
     # Check that user has a graphical display available.
     # If not, set the flag that causes a link to the

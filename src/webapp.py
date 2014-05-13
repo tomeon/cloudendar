@@ -8,7 +8,7 @@ import time
 import werkzeug.serving
 
 from database import db_session, db_init
-from flask.ext.bootstrap import Bootstrap
+from flask.ext.bootstrap import Bootstrap, bootstrap_find_resource
 from flask.ext.moment import Moment
 from flask.ext.socketio import SocketIO, emit
 from forms import EventForm, LoginForm, SearchForm, SignupForm
@@ -59,8 +59,19 @@ def create_app():
         SECRET_KEY='secret',
     )
 
-    Bootstrap(app)
+    cdns = {
+            "jquery-ui_css": "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css",
+            "jquery_js": "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js",
+            "jquery-ui_js": "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js",
+            "socketio_js": "//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js",
+            }
+
     Moment(app)
+    Bootstrap(app)
+    app.extensions['bootstrap']['cdns'].update(cdns)
+    #for k, v in app.extensions['bootstrap']['cdns'].iteritems():
+    #    print("%s: %s" % (k,v))
+
     index_choices(ix, dummy_choices)
 
     return app
@@ -142,20 +153,30 @@ def search_form():
 
 @socketio.on('search', namespace='/search')
 def get_possibles(msg):
+    # Pull ONID email address out of msg argument
     onid = msg.get('data')
-    print(onid)
+
     if onid is None:
         ret = "Empty email"
+
     else:
+        # Try to grab the prefix of the email address
         match = re.match(r'(.+)@.+', onid)
         user = match.group(1)
+
         if user is None:
             ret = "Invalid email"
+
+        # Filter matches from list of fake users
         hits = filter(lambda e: e == user, dummy_users)
+
+        # Set returned message
         if len(hits) > 0:
             ret = "Found match: {0}".format(hits[0])
         else:
             ret = "No such user"
+
+    # Send data back down the socket
     emit('result', {'data': ret})
 
 
