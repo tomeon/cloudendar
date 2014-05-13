@@ -357,15 +357,15 @@ class UserAvailabilityForm(npyscreen.FormMuttActiveTraditional):
         # initial start time
         self.start_time = datetime.datetime.now()
         self.start_time = self.start_time.replace(
-            hour=(self.start_time.hour + 1) % 24,
+            hour=8,
             minute=0,
             second=0
         )
 
         # initial end time
-        self.end_time = datetime.datetime.now() + datetime.timedelta(hours=6)
+        self.end_time = datetime.datetime.now()
         self.end_time = self.end_time.replace(
-            hour=self.end_time.hour,
+            hour=18,
             minute=0,
             second=0
         )
