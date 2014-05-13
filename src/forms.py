@@ -118,11 +118,11 @@ dummy_choices = [(e, e) for e in ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Fran
                                   'Von', 'Wendy', 'Xavier', 'Zelda']]
 
 
-# From http://wtforms.readthedocs.org/en/latest/widgets.html
-def select_multi_checkbox(field, ul_class='', **kwargs):
+# Adapted from http://wtforms.readthedocs.org/en/latest/widgets.html
+def select_multi_checkbox(field, ul_class='', ul_role='', **kwargs):
     kwargs.setdefault('type', 'checkbox')
     field_id = kwargs.pop('id', field.id)
-    html = [u'<ul %s>' % html_params(id=field_id, class_=ul_class)]
+    html = [u'<ul %s>' % html_params(id=field_id, class_=ul_class, role=ul_role)]
     for value, label, checked in field.iter_choices():
         choice_id = u'%s-%s' % (field_id, value)
         options = dict(kwargs, name=field.name, value=value, id=choice_id)
