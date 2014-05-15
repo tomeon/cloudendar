@@ -3,6 +3,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from flask.ext.wtf import Form
 from wtforms import (
+    HiddenField,
     PasswordField,
     RadioField,
     SelectField,
@@ -19,7 +20,7 @@ from wtforms.validators import (
     EqualTo,
     ValidationError,
 )
-from wtforms.widgets import html_params, HTMLString
+from wtforms.widgets import html_params, HiddenInput, HTMLString
 
 
 class SelectWithDisable(object):
@@ -133,6 +134,34 @@ def select_multi_checkbox(field, ul_class='', ul_role='', **kwargs):
     html.append(u'</ul>')
     return u''.join(html)
 
+class HiddenListField(HiddenField):
+    widget = HiddenInput()
+
+    def __init__(self, label='', validators=None, remove_duplicates=True, **kwargs):
+        super(HiddenListField, self).__init__(label, validators, **kwargs)
+        self.remove_duplicates = remove_duplicates
+
+    def _value(self):
+        if self.data:
+            return u','.join(self.data)
+        else:
+            return u''
+
+    def process_formdata(self, valuelist):
+        self.data = valuelist
+        if self.remove_duplicates:
+            self.data = [x.strip() for x in valuelist[0].split(',')]
+        else:
+            self.data = []
+
+    @classmethod
+    def _remove_duplicates(cls, seq):
+        d = {}
+        for item in seq:
+            lc_item = item.lower()
+            if lc_item not in d:
+                d[lc_item] = True
+                yield item
 
 class SearchForm(Form):
     start = DateTimePickerField('Start time',
@@ -146,7 +175,8 @@ class SearchForm(Form):
                                           compare_datetime('start')],
                               default=date.today() + relativedelta(hour=13),
                               )
-    users = TextAreaField('Users', validators=[InputRequired()])
+    #users = TextAreaField('Users', validators=[InputRequired()])
+    users = HiddenListField('Users')
     search_type = RadioField('Narrow by',
                              validators=[InputRequired()],
                              choices=[('open', 'All open times for user(s)'),

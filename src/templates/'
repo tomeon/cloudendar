@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block page_content %}
+{{ macros.page_header('Find free times and users') }}
+
+<div class='row'>
+    <div class='col-xs-4 col-md-2'>
+
+        <div id='search' class='input-group'>
+            <label for='onid'>ONID</label>
+            <input type='text' class = 'form-control typeahead' name='onid' id='onid'
+                spellcheck='false' placeholder='Search ONIDs'>
+            <button class='btn btn-default' type='button' id='adduser'>Add</button>
+        </div>
+
+        <div class='voffset4 panel panel-default'>
+            <div class='panel-heading'><strong>Attendees</strong></div>
+            <ul class='list-group' id='attendees'>
+            </ul>
+        </div>
+
+        <div class='voffset4'></div>
+        {{ wtf.quick_form(form, button_map={'submit': 'primary'}) }}
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel='stylesheet' type='text/css' href='{{ url_for('static', filename='lib/datetimepicker/jquery.datetimepicker.css')}}'>
+<link rel='stylesheet' type='text/css' href='{{ url_for('static', filename='assets/css/typeahead.css')}}'>
+<link rel='stylesheet' type='text/css' href='{{ url_for('static', filename='assets/css/search.css')}}'>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type='text/javascript' src='{{url_for('static', filename='lib/datetimepicker/jquery.datetimepicker.js')}}'></script>
+<script src='{{ bootstrap_find_resource('socket.io.js', cdn='socket.io', use_minified=True) }}'></script>
+<script src='{{ bootstrap_find_resource('typeahead.bundle.js', cdn='typeahead', use_minified=True) }}'></script>
+<script type='text/javascript'>
+(function($, document, window) {
+    $(document).ready(function() {
+        // Attach datetimepicker widgets to start and end time fields
+        $('#start').datetimepicker();
+        $('#end').datetimepicker();
+
+        var attendees = attendees || {};
+
+        var socket = io.connect('http://' + document.domain + ':' +
+            location.port + '/search');
+
+        var substrMatcher = function(strs) {
+            return function findMatches(q, cb) {
+                var matches, substrRegex;
+                matches = [];
+                substrRegex = new RegExp(q, 'i');
+                $.each(strs, function(i, str) {
+                    if(substrRegex.test(str)) {
+                        matches.push({value: str});
+                    }
+                });
+
+                cb(matches);
+            };
+        };
+
+        var liDismiss = function(v) {
+            //"<li class='list-group-item'>" + e + " <button type='button' class='close pull-right' aria-hidden='true'>&times;</button> </li>");
+            var btn = $('button', {
+                type: 'button',
+                class: 'close pull-right',
+                aria-hidden: 'true',
+                onclick: function() {
+                    $(this).clear();
+                }
+            });
+            btn.val('&times;');
+            var li = $('li', {
+                class: 'list-group-item',
+            });
+            li.val(v);
+            li.append(btn);
+            return li;
+        };
+
+        socket.on('onids', function(msg) {
+            $('#search .typeahead').typeahead(
+                {
+                    hint: true,
+                    highlight: true,
+                    minLength: 1,
+                },
+                {
+                    name: 'onids',
+                    displayKey: 'value',
+                    source: substrMatcher(msg.data),
+                }
+            );
+        });
+
+        socket.on('result', function(msg) {
+            alert(msg.data);
+            //$('#users').append(msg.data + ', ');
+        });
+
+        $('#adduser').click(function (event) {
+            // Grab entered text
+            attendee = $("#onid").val();
+
+            // Add to the dictionary, if it's not already there
+            if(! attendees[attendee]) {
+                attendees[attendee] = attendee;
+            }
+
+            // Clear out list
+            $('#attendees').empty();
+
+            // Replace list with new list containing all members of interest
+            $.each(attendees, function(i, e) {
+                $('#attendees').append();
+            });
+
+            // Reset text field
+            $("#onid").val("");
+
+            // Stop whatever would have happened otherwise
+            event.preventDefault();
+        });
+    });
+})(jQuery, document, window);
+</script>
+{% endblock %}

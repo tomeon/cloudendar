@@ -8,7 +8,7 @@ import time
 import werkzeug.serving
 
 from database import db_session, db_init
-from flask.ext.bootstrap import Bootstrap, bootstrap_find_resource
+from flask.ext.bootstrap import Bootstrap, WebCDN
 from flask.ext.moment import Moment
 from flask.ext.socketio import SocketIO, emit
 from forms import EventForm, LoginForm, SearchForm, SignupForm
@@ -34,10 +34,14 @@ ix = index.create_in('data', schema=schema, indexname="dummy_choices")
 #    ix = index.open_dir('data', indexname="dummy_choices")
 
 
-dummy_users = ['Alice', 'Bob', 'Carol', 'Del', 'Edith', 'Frank', 'Gertrude',
-                'Hiram', 'Ilse', 'Jon', 'Karen', 'Lon', 'Matilda', 'Nick', 'Oprah', 'Pete',
-                'Quinn', 'Rob', 'Sarah', 'Ted', 'Ursula', 'Von', 'Wendy', 'Xavier', 'Zelda']
+dummy_users = ["Alice", "Bob", "Carol", "Del", "Edith", "Frank", "Gertrude",
+                "Hiram", "Ilse", "Jon", "Karen", "Lon", "Matilda", "Nick", "Oprah", "Pete",
+                "Quinn", "Rob", "Sarah", "Ted", "Ursula", "Von", "Wendy",
+               "Xavier", "Yolanda", "Zane"]
 dummy_choices = [(unicode(e), unicode(e)) for e in dummy_users]
+dummy_onids = [{"name": unicode(e), "onid": (e)} for e in dummy_users]
+
+selected_users = []
 
 
 def index_choices(ix, choices):
@@ -60,17 +64,16 @@ def create_app():
     )
 
     cdns = {
-            "jquery-ui_css": "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css",
-            "jquery_js": "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js",
-            "jquery-ui_js": "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js",
-            "socketio_js": "//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js",
-            }
+        "jquery": WebCDN("//ajax.googleapis.com/ajax/libs/jquery/1.11.0/"),
+        "jquery-ui": WebCDN("//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/"),
+        "socket.io": WebCDN("//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/"),
+        "typeahead": WebCDN("//cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.10.2/"),
+        "handlebars": WebCDN("//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0-alpha.2/"),
+    }
 
     Moment(app)
     Bootstrap(app)
     app.extensions['bootstrap']['cdns'].update(cdns)
-    #for k, v in app.extensions['bootstrap']['cdns'].iteritems():
-    #    print("%s: %s" % (k,v))
 
     index_choices(ix, dummy_choices)
 
@@ -145,10 +148,17 @@ def search_form():
     form = SearchForm()
     if form.validate_on_submit():
         flask.flash("Success!")
-        print(form.start.data)
-        print(form.end.data)
+        for field in form:
+            print(field)
         return flask.redirect(flask.url_for('index'))
+    for field in form:
+        print(field)
     return flask.render_template('search.html', form=form)
+
+
+@socketio.on('connect', namespace='/search')
+def create_search_list():
+    emit('onids', {'data': dummy_onids})
 
 
 @socketio.on('search', namespace='/search')
