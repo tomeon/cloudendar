@@ -61,8 +61,9 @@ class Event(Base):
     datetime = Column(DateTime, index=True)
     duration = Column(Interval)
 
-    def __init__(self, datetime=None):
+    def __init__(self, datetime=None, duration=None):
         self.datetime = datetime
+        self.duration = duration
 
     def __repr__(self):
         return '<Event %r>' % (self.datetime)
