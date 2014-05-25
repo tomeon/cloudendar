@@ -50,7 +50,7 @@ $dbh->query($query);
 
 $query = "insert into event values('clampitc',' 2014-05-02 03:30:00',' 2014-05-02 09:00:00','Some Atrrib','Pearl District','PhotoShoot',0);";
 
-$dbh->queryqueryExec($$query);
+$dbh->query($query);
 
 PRINT "Update complete";
 
@@ -59,7 +59,6 @@ PRINT "Update complete";
 
 <BR />/* This is an example of selecting from the DB rows by column name. The user table structure is onid_id varchar(8),fname varchar(20),lname varchar(40),dept varchar(40) */<BR />
 <?php
-
 
 $dir = 'sqlite:database/schedule.db';
 
