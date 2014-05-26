@@ -7,7 +7,7 @@ conn = sqlite3.connect('database/schedule.db')
 print "Opened database successfully";
 
 
-# Kayla -- These are great sources of examples for us to use. 
+# Kayla -- These are great sources of examples for us to use.
 # http://www.tutorialspoint.com/sqlite/sqlite_python.htm
 # http://pymotw.com/2/sqlite3/
 
@@ -68,6 +68,3 @@ with sqlite3.connect('database/schedule.db') as conn:
 #conn.execute("DELETE from user where dept = 'I was updated';")
 #conn.commit
 #print "Total number of rows deleted :", conn.total_changes
-
-
-

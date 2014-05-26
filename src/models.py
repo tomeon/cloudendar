@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -11,36 +12,35 @@ from sqlalchemy.orm import backref, relationship
 from database import Base
 
 
-userevents = Table(
-    'userevents',
+user_event = Table(
+    'user_event',
     Base.metadata,
-    Column('user_onid', Integer, ForeignKey('users.onid')),
-    Column('event_id', Integer, ForeignKey('events.id')),
+    Column('onid', Integer, ForeignKey('user.onid')),
+    Column('eid', Integer, ForeignKey('event.id')),
 )
 
 
-usergroups = Table(
-    'usergroups',
+user_group = Table(
+    'user_group',
     Base.metadata,
-    Column('user_onid', Integer, ForeignKey('users.onid')),
-    Column('group_id', Integer, ForeignKey('groups.id')),
+    Column('onid', Integer, ForeignKey('user.onid')),
+    Column('gid', Integer, ForeignKey('group.id')),
 )
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = 'user'
     onid = Column(String, primary_key=True, unique=True, index=True)
-    fname = Column(String(50))
-    lname = Column(String(50))
-    dept = Column(String(50), index=True, nullable=True)
-    email = Column(String(120), unique=120)
+    fname = Column(String(40))
+    lname = Column(String(40))
+    dept = Column(String(40), index=True, nullable=True)
     events = relationship("Event",
-                          secondary=userevents,
-                          backref=backref('users', lazy='dynamic'),
+                          secondary=user_event,
+                          backref=backref('user', lazy='dynamic'),
                           lazy='dynamic')
     groups = relationship("Group",
-                          secondary=usergroups,
-                          backref=backref('users', lazy='dynamic'),
+                          secondary=user_group,
+                          backref=backref('user', lazy='dynamic'),
                           lazy='dynamic')
 
     def __init__(self, onid=None, fname=None, lname=None, dept=None,
@@ -56,23 +56,33 @@ class User(Base):
 
 
 class Event(Base):
-    __tablename__ = 'events'
+    __tablename__ = 'event'
     id = Column(Integer, primary_key=True)
-    datetime = Column(DateTime, index=True)
+    start_date = Column(DateTime, index=True)
+    end_date = Column(DateTime)
+    attrb_name = Column(String(40))
+    location = Column(String(40))
+    description = Column(String(80))
+    allday = Column(Boolean, default=False)
     duration = Column(Interval)
 
-    def __init__(self, datetime=None, duration=None):
-        self.datetime = datetime
-        self.duration = duration
+    def __init__(self, start_date=None, end_date=None, attrb_name=None,
+                 location=None, description=None, allday=False):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.attrb_name = attrb_name
+        self.location = location
+        self.description = description
+        self.allday = allday
 
     def __repr__(self):
-        return '<Event %r>' % (self.datetime)
+        return '<Event %r - %r>' % (self.start_date, self.end_date)
 
 
 class Group(Base):
-    __tablename__ = 'groups'
+    __tablename__ = 'group'
     id = Column(Integer, primary_key=True)
-    name = Column(String(50))
+    name = Column(String(40))
 
     def __init__(self, name=None):
         self.name = name
