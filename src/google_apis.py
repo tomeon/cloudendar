@@ -51,9 +51,30 @@ CLIENT_SECRETS = os.path.join(os.path.dirname(__file__),
 # NEED. For more information on using scopes please see
 # <https://developers.google.com/+/best-practices>.
 FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS,
-    scope=[ #'https://www.googleapis.com/auth/calendar',
-           'https://www.googleapis.com/auth/calendar.readonly', ],
-        message=tools.message_if_missing(CLIENT_SECRETS))
+    scope=[
+        # Calendar API authorization
+        #'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.readonly',
+        # Directory API authorization
+        'https://www.googleapis.com/auth/admin.directory.device.chromeos',
+        'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
+        'https://www.googleapis.com/auth/admin.directory.device.mobile',
+        'https://www.googleapis.com/auth/admin.directory.device.mobile.action',
+        'https://www.googleapis.com/auth/admin.directory.device.mobile.readonly',
+        'https://www.googleapis.com/auth/admin.directory.group',
+        'https://www.googleapis.com/auth/admin.directory.group.member',
+        'https://www.googleapis.com/auth/admin.directory.group.member.readonly',
+        'https://www.googleapis.com/auth/admin.directory.group.readonly',
+        'https://www.googleapis.com/auth/admin.directory.notifications',
+        'https://www.googleapis.com/auth/admin.directory.orgunit',
+        'https://www.googleapis.com/auth/admin.directory.orgunit.readonly',
+        'https://www.googleapis.com/auth/admin.directory.user',
+        'https://www.googleapis.com/auth/admin.directory.user.alias',
+        'https://www.googleapis.com/auth/admin.directory.user.alias.readonly',
+        'https://www.googleapis.com/auth/admin.directory.user.readonly',
+        'https://www.googleapis.com/auth/admin.directory.user.security',
+    ],
+    message=tools.message_if_missing(CLIENT_SECRETS))
 
 
 def convert_ranges_dict(convert_func, ranges_list):

@@ -59,3 +59,5 @@ if __name__ == "__main__":
                                                     lname='Fisher')).all()
     print("Wanda's events: {}".format(pprint.pformat(wanda_events)))
 
+    # Close the database session
+    db_session.remove()
