@@ -298,38 +298,6 @@ def calendars_free(timeMin, timeMax, calendars):
     return calendars_local
 
 
-def init_gcal_api(flags, auth_host_name=None, noauth_local_webserver=None,
-                  auth_host_port=None, logging_level=None,
-                  storage_path=os.path.join(os.path.dirname(__file__),
-                                            'data/sample.dat')):
-
-    if auth_host_name is not None:
-        pass
-
-    # Check that user has a graphical display available.
-    # If not, set the flag that causes a link to the
-    # auth page to be displayed on the command line
-    if not os.environ.get('DISPLAY'):
-        flags.noauth_local_webserver = True
-
-    # If the credentials don't exist or are invalid run through the native
-    # client flow. The Storage object will ensure that if successful the good
-    # credentials will get written back to the file.
-    storage = file.Storage(os.path.join(os.path.dirname(__file__),
-                                        'data/sample.dat'))
-    credentials = storage.get()
-    if credentials is None or credentials.invalid:
-        credentials = tools.run_flow(FLOW, storage, flags)
-
-    # Create an httplib2.Http object to handle our HTTP requests and authorize
-    # it with our good Credentials.
-    http = httplib2.Http()
-    http = credentials.authorize(http)
-
-    # Construct the service object for the interacting with the Calendar API.
-    return discovery.build('calendar', 'v3', http=http)
-
-
 def execute_freebusy_query(service, start_time, end_time, users):
     try:
         start_time_str = generate(start_time)
@@ -353,6 +321,52 @@ def execute_freebusy_query(service, start_time, end_time, users):
 
     # Add list of free times to calendars
     return calendars_free(start_time, end_time, new_calendars)
+
+
+def init_google_api(
+    api_name,
+    api_version,
+    auth_host_name=None,
+    noauth_local_webserver=None,
+    auth_host_port=None,
+    logging_level=None,
+    storage_path=os.path.join(os.path.dirname(__file__), 'data/sample.dat')
+):
+    """
+    For the calendar API, api_name is 'calendar' and api_version is 'v3'.
+    For the directory API, api_name is 'admin' and api_version is 'directory_v1'
+    """
+    # Parse the command-line flags.
+    # What to do about this?  It's unlikely that this module is going to be
+    # invoked as a script.  Can we build the parser object without passing
+    # sys.argv?  Maybe just an empty list?  Or does tools.run_flow accept other
+    # structures for the 'flags' argument?
+    flags = parser.parse_args(sys.argv[1:])
+
+    if auth_host_name is not None:
+        pass
+
+    # Check that user has a graphical display available.
+    # If not, set the flag that causes a link to the
+    # auth page to be displayed on the command line
+    if not os.environ.get('DISPLAY'):
+        flags.noauth_local_webserver = True
+
+    # If the credentials don't exist or are invalid run through the native
+    # client flow. The Storage object will ensure that if successful the good
+    # credentials will get written back to the file.
+    storage = file.Storage(storage_path)
+    credentials = storage.get()
+    if credentials is None or credentials.invalid:
+        credentials = tools.run_flow(FLOW, storage, flags)
+
+    # Create an httplib2.Http object to handle our HTTP requests and authorize
+    # it with our good Credentials.
+    http = httplib2.Http()
+    http = credentials.authorize(http)
+
+    # Construct the service object for the interacting with the Calendar API.
+    return discovery.build(api_name, api_version, http=http)
 
 
 def main(argv):
