@@ -1,13 +1,17 @@
 #import gevent.monkey; gevent.monkey.patch_all()
 import flask
+import gapi
 import gevent.wsgi
 import os
 import pprint
 import re
 import time
+import utility
 import werkzeug.serving
 
 from database import db_session, db_init
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from flask.ext.bootstrap import Bootstrap, WebCDN
 from flask.ext.moment import Moment
 from flask.ext.socketio import SocketIO, emit
@@ -154,6 +158,24 @@ def search_form():
     for field in form:
         print(field)
     return flask.render_template('search.html', form=form)
+
+
+@app.route('/me')
+def return_me():
+    me = utility.request_onid("matt", "schreiber")
+    gcal = gapi.CalendarAPI()
+    now = datetime.now()
+    soon = now + relativedelta(weeks=+1)
+    free = gcal.query_calendars_free([me])
+    free = gcal.query_calendars_free([me], now, soon)
+    print(free)
+    #free_times = free.get('schreibm@onid.oregonstate.edu').get('free')[0]
+    free_times = free.get(me + gapi.EMAIL_POSTFIX).get('free')[0]
+    start = free_times.get('start')
+    end = free_times.get('end')
+    start = utility.pretty_date(start)
+    end = utility.pretty_date(end)
+    return "{} is free from {} to {}".format(me, start, end)
 
 
 @socketio.on('connect', namespace='/search')
