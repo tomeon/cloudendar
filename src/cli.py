@@ -5,6 +5,20 @@ import npyscreen
 from npyscreen import wgtextbox
 import curses
 
+# database imports
+from database import db_init, db_session
+from models import User, Event
+from sqlalchemy.orm.exc import NoResultFound
+
+# logging
+import logging
+logger = logging.getLogger(__name__)
+file_handler = logging.FileHandler('cli.log')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+logger.setLevel(logging.DEBUG)
+
 # google calendar datetime format
 GCAL_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S-07:00'  # offset to PST
 
@@ -79,10 +93,13 @@ def get_user_busy_intervals(users, start_time, end_time):
     :return: Dictionary of users and free/busy lists.
     :rtype: dict
     """
-    busy = dict()
+    busy = {}
 
     for user in users:
-        busy[user] = get_free_busy(user, start_time, end_time)
+        user_obj = User.query.filter_by(onid=user).one()
+        busy[user_obj] = [event for event in user_obj.events]
+
+    logger.debug('get_user_busy_intervals: retrieved {}'.format(busy))
 
     return busy
 
@@ -133,13 +150,13 @@ def time_between_times(time, start_time, end_time):
     return False
 
 
-def is_available(busy_intervals, start_time, end_time):
+def is_available(events, start_time, end_time):
     """For every interval, check if the start or end time lands in a busy
     interval or if the busy interval lands in the start or end time.
     """
-    for interval in busy_intervals:
-        busy_start = interval['start']
-        busy_end = interval['end']
+    for event in events:
+        busy_start = event.start_date
+        busy_end = event.end_date
 
         if time_between_times(start_time, busy_start, busy_end):
             # if the start of the meeting is in a busy period
@@ -168,12 +185,21 @@ def find_possible_attendees(users, start_time, end_time):
     return attendees
 
 
-def get_pretty_intervals(user_interval_dictionary):
+def get_pretty_intervals(users_and_events):
+    logger.debug('get_pretty_intervals: got {} as input'.format(users_and_events))
+
+    # create a new dict with users as keys
+    user_interval_dictionary = users_and_events.copy()
+
+    # for each user, swap out the event object list with a list of pretty printed strings
     for user in user_interval_dictionary:
-        intervals = user_interval_dictionary[user]
-        for interval in intervals:
-            interval['start'] = interval['start'].strftime(USER_DATETIME_FORMAT)
-            interval['end'] = interval['end'].strftime(USER_DATETIME_FORMAT)
+        events = user_interval_dictionary[user]
+        user_interval_dictionary[user] = []
+        for event in events:
+            new_event = {}
+            new_event['start'] = event.start_date.strftime(USER_DATETIME_FORMAT)
+            new_event['end'] = event.end_date.strftime(USER_DATETIME_FORMAT)
+            user_interval_dictionary[user].append(new_event)
 
     return user_interval_dictionary
 
@@ -259,7 +285,15 @@ class ActionControllerUserAvailability(npyscreen.ActionControllerSimple):
             self.parent.users.remove(command)
         else:
             # add the username to the list
-            self.parent.users.append(command)
+            try:
+                # check to make sure it's a valid user
+                # an exception gets thrown if it's not
+                logger.debug("set_users: command = '{}'".format(command))
+                User.query.filter_by(onid=command).one()
+                self.parent.users.append(command)
+            except NoResultFound:
+                assert True == False
+                pass  # TODO: popup stating invalid user
 
         # redraw the status
         self.update_values()
@@ -273,7 +307,8 @@ class ActionControllerUserAvailability(npyscreen.ActionControllerSimple):
                 self.parent.end_time
             )
             pretty_user_intervals = get_pretty_intervals(user_intervals_dict)
-            values = pretty_user_intervals[self.parent.users[0]]
+            assert isinstance(pretty_user_intervals, dict)
+            values = pretty_user_intervals.items()[0]
 
         elif self.parent.mode == 'attendance':
             values = self.display_attendance_mode()
@@ -444,9 +479,13 @@ class MainForm(npyscreen.Form):
 
 class SchedulerApplication(npyscreen.NPSAppManaged):
     def onStart(self):
+        # open up the database connection
+        db_init()
+
         self.registerForm('MAIN', MainForm())
         self.registerForm('USERAVAILABILITY', UserAvailabilityForm())
         self.registerForm('DATETIME', DateTimeForm())
+
 
 
 if __name__ == '__main__':
