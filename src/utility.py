@@ -5,12 +5,10 @@ import inspect
 import itertools
 import linecache
 import pwd
-import operator
 import requests
 import simplejson as json
 import sys
-import urllib
-import urllib2
+
 
 ONID_LNAME_MINLEN = 6
 ONID_LNAME_MAXLEN = 7
@@ -19,7 +17,8 @@ ONID_DUP_MAX = 3
 
 def get_onid(fname, lname):
     def _generate_onids(fname, lname):
-        # Grab list consisting of first letter and first two letters of first name
+        # Grab list consisting of first letter and first two letters of first
+        # name
         ftrunc = [fname[0], fname[0:2]]
 
         # Figure out how long the section of last name should be
@@ -36,10 +35,11 @@ def get_onid(fname, lname):
         combo = [ftrunc, ltrunc]
 
         mutations = list(itertools.product(*combo))
-        mutations = list(itertools.chain.from_iterable(map(lambda e: [e[0] + e[1],
-            e[1] + e[0]], mutations)))
-        mutations += list(itertools.chain.from_iterable(map(lambda e: [e + str(x)
-            for x in range(2, ONID_DUP_MAX + 1)], mutations)))
+        mutations = list(itertools.chain.from_iterable(
+            map(lambda e: [e[0] + e[1], e[1] + e[0]], mutations)))
+        mutations += list(itertools.chain.from_iterable(
+            map(lambda e: [e + str(x) for x in range(2, ONID_DUP_MAX + 1)],
+                mutations)))
 
         for onid in mutations:
             yield onid
@@ -76,11 +76,17 @@ def request_onids(users):
     headers = {'content-type': 'application/json'}
 
     response = requests.post(url, data=json.dumps(payload), headers=headers)
-    return json.loads(response.content)
+    ret = json.loads(response.content)
+
+    for user in ret:
+        if user.get('onid') == 'None':
+            user['onid'] = None
+
+    return ret
 
 
 def request_onid(fname, lname):
-    return request_onids([{'fname': fname, 'lname': lname}])[0].get('onid')
+    return request_onids([{'fname': fname, 'lname': lname}])[0]
 
 
 def pretty_date(dt):
@@ -110,7 +116,6 @@ def log_diag(msg):
     info = inspect.getframeinfo(frame)
     print("{} :: {} :: {}: {}".format(info.filename, info.function,
                                       info.lineno, msg), file=sys.stderr)
-
 
 
 if __name__ == "__main__":

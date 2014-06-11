@@ -54,6 +54,18 @@ class User(Base):
     def __repr__(self):
         return '<User %r %r>' % (self.fname, self.lname)
 
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return unicode(self.onid)
+
 
 class Event(Base):
     __tablename__ = 'event'
