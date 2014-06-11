@@ -2,7 +2,7 @@
 *.ropeproject/
 *.pyc
 sample.dat
-client_secrets.json
+*client_secrets.json
 /bin/
 /include/
 /lib/
