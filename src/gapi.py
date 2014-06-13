@@ -12,10 +12,11 @@ from apiclient import discovery
 from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzutc, tzlocal
 from datetime import datetime
+from models import User
 from oauth2client import client, file, tools
 from pyicl import Interval, IntervalMap, IntervalSet, Set
 from pyrfc3339 import generate, parse
-from utility import log_diag, log_err
+from utility import log_diag, log_err, get_username
 
 
 # For appending to usernames when constructing a freebusy query
@@ -33,7 +34,9 @@ REDIRECT_URI = "http://localhost:5000/oauth2callback"
 # REDIRECT_URI = "http://cloudendar.mooo.com/oath2callback"
 
 # Location of the Credentials storage file
-AUTH_STORAGE_PATH = os.path.join(os.path.dirname(__file__), 'data/credentials.dat')
+# AUTH_STORAGE_PATH = os.path.join(os.path.dirname(__file__), 'data/credentials.dat')
+# Store in logged-in user's home directory
+AUTH_STORAGE_PATH = os.path.join(os.path.expanduser("~"), '.gapicredentials.dat')
 
 
 # NATIVE_CLIENT_SECRET is name of a file containing the OAuth 2.0 information for
@@ -93,6 +96,8 @@ APP_SCOPE = [
         # Userinfo API authorization
         'https://www.googleapis.com/auth/plus.me',
         'https://www.googleapis.com/auth/plus.profile.emails.read',
+        # TODO delete
+        'https://www.googleapis.com/auth/plus.login',
     ]
 
 ACCESS_TYPE = "offline"
@@ -103,9 +108,9 @@ APPROVAL_PROMPT = "force"
 
 # Set up a client-side Flow object to be used for authentication.
 # This should be used for the CLI application.
-def get_flow_from_clientsecrets(self):
-    return client.flow_from_clientsecrets(NATIVE_CLIENT_SECRET, scope=APP_SCOPE,
-                                          message=tools.message_if_missing(NATIVE_CLIENT_SECRET))
+def get_flow_from_clientsecrets(client_secret=NATIVE_CLIENT_SECRET, scope=APP_SCOPE):
+    return client.flow_from_clientsecrets(client_secret, scope=scope,
+                                          message=tools.message_if_missing(client_secret))
 
 
 # Set up a client-side Flow object to be used for authentication. This should
@@ -191,6 +196,8 @@ class GAPI(object):
         else:
             self.construct_service(api_name, api_version, *args, **kwargs)
 
+    # TODO: add db_session to arguments (and to __init__'s arguments) so that it's
+    # possible to query the database for credentials.
     def run_flow_from_clientsecrets(self, api_name, api_version,
                                     auth_host_name=None,
                                     noauth_local_webserver=None,
@@ -219,6 +226,8 @@ class GAPI(object):
         if not os.environ.get('DISPLAY'):
             flags.noauth_local_webserver = True
 
+        # TODO Replace this with database query?
+        #
         # If the credentials don't exist or are invalid, run through the native
         # client flow. The Storage object will ensure that if successful the good
         # credentials will get written back to the file.
@@ -228,12 +237,39 @@ class GAPI(object):
         if credentials is None:
             credentials = storage.get()
 
+        """
+        # Grab the user whose primary ID is the user's current UNIX username.
+        # TODO: unknown if this works reliably on OSU's servers: are all server
+        # usernames identical to their users' ONIDs?
+        onid = get_username()
+        user = User.query.filter(User.onid == onid).first()
+        if user is None:
+            new_user = True
+        else:
+            new_user = False
+        """
+
         if credentials is None or credentials.invalid:
             credentials = tools.run_flow(get_flow_from_clientsecrets(),
                                          storage, flags)
+
         self.credentials = credentials
 
         self.construct_service(api_name, api_version, credentials)
+
+        """
+        # Create new user
+        # TODO get user's fname and lname from the returned credentials
+        if new_user:
+            user = User(onid=onid, fname=fname, lname=lname)
+            db_session.add(user)
+        user.credentials = credentials
+        db_session.commit()
+        """
+
+
+    def test_db_session():
+        return User.query.get(get_username())
 
     def construct_service(self, api_name, api_version, credentials=None):
         credentials = credentials or self.credentials
@@ -377,7 +413,7 @@ class CalendarAPI(GAPI):
         self.calendars = self._calendars_free(start_time, end_time, new_calendars)
         return self.calendars
 
-    def get_calendars(self, tz=None):
+    def get_calendars(self, calendars=None, tz=None):
         """
         Pre:
             -   'tz' is a 'tzinfo' object
@@ -385,9 +421,10 @@ class CalendarAPI(GAPI):
             -   Returns the object's 'calendars' attribute, after optionally
                 converting the timezones of its 'free' and 'busy' times
         """
-        if self.calendars is not None:
-            calendars = self.calendars
+        calendars = calendars or self.calendars
+        tz = tz or self.tz or tzlocal()
 
+        if calendars is not None:
             if tz is not None:
                 calendars = self.convert_calendars(calendars,
                                                    self._convert_tz(tz))
@@ -681,30 +718,59 @@ class DirectoryAPI(GAPI):
         super(DirectoryAPI, self).__init__('admin', 'directory_v1', **kwargs)
 
 class PeopleAPI(GAPI):
-    def __init__(self, **kwargs):
+    def __init__(self, userId=None, **kwargs):
         super(PeopleAPI, self).__init__('plus', 'v1', **kwargs)
-
-    def get_userinfo(self, userId=None):
         userId = userId or 'me'
-        return self.service.people().get(userId=userId).execute()
+        self.userinfo = self.service.people().get(userId=userId).execute()
 
-    def get_emails(self, userId=None, userinfo=None):
-        if userinfo is not None:
-            return userinfo.get('email')
+    def get_userinfo(self, userId=None, refresh=False):
         userId = userId or 'me'
-        return self.service.people().get(userId=userId).execute().get('email')
+        if refresh:
+            return self.service.people().get(userId=userId).execute()
+        return self.userinfo
 
-    def get_domain(self, userId=None, userinfo=None):
-        if userinfo is not None:
-            return userinfo.get('domain')
+    def get_names(self, userId=None, userinfo=None, refresh=False):
         userId = userId or 'me'
-        return self.service.people().get(userId=userId).execute().get('hd')
+        if refresh:
+            userinfo = userinfo or self.service.people().get(userId=userId).execute()
+        else:
+            userinfo = userinfo or self.userinfo
+        name = userinfo.get('name')
+        names = name.get('givenName').split()
+        names.append(name.get('familyName'))
+        return tuple(names)
 
-    def get_usernames(self, userId=None, userinfo=None):
-        if userinfo is not None:
-            emails = userinfo.get('email')
 
+    def get_emails(self, userId=None, userinfo=None, refresh=False):
         userId = userId or 'me'
-        emails = self.service.people().get(userId=userId).execute().get('emails')
+        if refresh:
+            userinfo = userinfo or self.service.people().get(userId=userId).execute()
+        else:
+            userinfo = userinfo or self.userinfo
+        return [email.get('value') for email in userinfo.get('emails')]
 
-        return map(lambda email: re.match('^(.*?)@.*$', email.get('value')).group(1), emails)
+    def get_email(self, userId=None, userinfo=None, refresh=False):
+        return self.get_emails(userId, userinfo, refresh)[0]
+
+    def get_domain(self, userId=None, userinfo=None, refresh=False):
+        userId = userId or 'me'
+        if refresh:
+            userinfo = userinfo or self.service.people().get(userId=userId).execute()
+        else:
+            userinfo = userinfo or self.userinfo
+        return userinfo.get('hd')
+
+    def get_usernames(self, userId=None, userinfo=None, refresh=False):
+        emails = self.get_emails(userId, userinfo, refresh)
+        return map(lambda email: re.match('^(.*?)@.*$', email).group(1), emails)
+
+    def get_username(self, userId=None, userinfo=None, refresh=False):
+        return re.match('^(.*?)@.*$', self.get_email(userId, userinfo, refresh)).group(1)
+
+def get_free_times(user, gcal, start_time=None, end_time=None, refresh=False):
+    calendars = gcal.query_calendars_free([user.get_username()], start_time, end_time)
+    return calendars.get(user.get_email()).get('free')
+
+def get_busy_times(user, gcal, start_time=None, end_time=None, refresh=False):
+    calendars = gcal.query_calendars_free([user.get_username()], start_time, end_time)
+    return calendars.get(user.get_email()).get('busy')

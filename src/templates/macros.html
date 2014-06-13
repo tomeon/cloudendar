@@ -21,3 +21,29 @@
     <strong>{{ heading }}</strong> {{ message }}
 </div>
 {% endmacro %}
+
+{# Thanks to user hdang at #}
+{# http://stackoverflow.com/questions/11665401/jinja-is-there-any-built-in-variable-to-get-current-html-page-name #}
+{# for this helpful macro #}
+
+{% macro render_sitem(dest=none, caption='', cls='', icon_cls='', active='', show_when_auth=true, ignore_auth=true) %}
+{% if dest is none: %}
+{% set href = '#' %}
+{% else: %}
+{% set href = url_for(dest) %}
+{% endif %}
+{% set li_active = '' %}
+{% set li_disabled = '' %}
+{% if not show_when_auth and 'username' in session: %}
+{% set li_disabled = 'disabled' %}
+{% endif %}
+{% if show_when_auth and 'username' not in session and not ignore_auth: %}
+{% set li_disabled = 'disabled' %}
+{% endif %}
+{% if request.endpoint == dest or active == dest: %}
+{% set li_active = 'active' %}
+{% endif %}
+<li class='{{ li_disabled }} {{ li_active }}'>
+    <a class='{{ cls|e }}' href="{{ href|e }}"><i class="{{ icon_cls|e }}"></i>{{ caption|e }}</a>
+</li>
+{% endmacro %}

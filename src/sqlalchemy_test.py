@@ -38,6 +38,8 @@ if __name__ == "__main__":
     db_session.add(wanda_fisher)
     db_session.add(dept_meeting)
 
+    wanda_fisher.events = [dept_meeting]
+
     # Commit transaction
     db_session.commit()
 
@@ -58,6 +60,13 @@ if __name__ == "__main__":
     wanda_events = Event.query.filter(Event.user.any(fname='Wanda',
                                                     lname='Fisher')).all()
     print("Wanda's events: {}".format(pprint.pformat(wanda_events)))
+
+    # Checking that I understand querying...
+    print("Wanda's ID: {}".format(wanda_fisher.onid))
+    wanda_2 = User.query.filter(User.onid == wanda_fisher.onid).first()
+    wanda_2_events = Event.query.filter(Event.user.any(fname=wanda_2.fname,
+                                                    lname=wanda_2.lname)).all()
+    print("Wanda 2's events: {}".format(pprint.pformat(wanda_2_events)))
 
     # Close the database session
     db_session.remove()

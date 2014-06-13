@@ -9,11 +9,13 @@ from sqlalchemy.ext.declarative import declarative_base
 basedir = os.path.abspath(os.path.dirname(__file__))
 db_uri = 'sqlite:///' + os.path.join(basedir, 'data/data.db')
 
+
 # Set up scoped session
 engine = create_engine(db_uri, convert_unicode=True)
 db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine))
+
 
 # Declare base object for subclassing tables
 Base = declarative_base()

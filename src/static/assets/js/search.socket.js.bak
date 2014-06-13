@@ -1,4 +1,3 @@
-<script type="text/javascript">
 (function($, document, location, window) {
     $(document).ready(function() {
         // Attach datetimepicker widgets to start and end time fields
@@ -59,18 +58,6 @@
             });
         };
 
-        var getUserNames = function(name) {
-            var names = value['value'].split(/\W+/),
-                lname = names.pop(),
-                fname = names.shift();
-
-            if(lname.length === 0 || fname.length === 0) {
-                return null;
-            } else {
-                return {name: {'fname': fname, 'lname': lname}};
-            }
-        };
-
         buildList();
 
         socket.on('items', function(msg) {
@@ -86,7 +73,7 @@
             // Begins processing of dataset
             onids();
 
-            $('#finduser .typeahead').typeahead(
+            $('#search .typeahead').typeahead(
                 {
                     hint: true,
                     highlight: true,
@@ -122,7 +109,7 @@
                 $(form).submit();
             } else {
                 // Add error signaling and error message to form input
-                $("#finduser").addClass("has-error");
+                $("#search").addClass("has-error");
                 var label = $("label[for='item']");
                 // Only add message if there's not already one there
                 if(label.find("p").length < 1) {
@@ -131,8 +118,7 @@
             }
         });
 
-        $("#findtimes").click(function(event) {
-            console.log("Searching....")
+        $("#search").click(function(event) {
             // Add user-chosen items to array
             var attendees_arr = [];
             $.each(attendees, function(k,v) {
@@ -157,26 +143,6 @@
             // Grab entered text
             attendee = $("#onid").val();
 
-            name_query = getUserNames(attendee);
-
-            if(name_query === null)
-                // TODO add error class to parent
-
-            console.log(JSON.stringify(name_query));
-            $.ajax({
-                type: 'POST',
-                url: '{{ url_for("run_query") }}',
-                contentType: 'application/json',
-                data: JSON.stringify(name_query),
-                success: function(result) {
-                    console.log('search result: ' + JSON.stringify(result));
-                },
-                error: function(e) {
-                    console.log(e);
-                }
-            });
-
-            /*
             // Add to the dictionary, if it's not already there
             if(! attendees[attendee] && attendee != "") { attendees[attendee] = attendee; }
 
@@ -184,11 +150,9 @@
 
             // Reset text field
             $("#onid").val("");
-            */
 
             // Stop whatever would have happened otherwise
             event.preventDefault();
         });
     });
 })(jQuery, document, location, window);
-</script>

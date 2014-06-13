@@ -5,8 +5,9 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Interval,
+    PickleType,
     String,
-    Table
+    Table,
 )
 from sqlalchemy.orm import backref, relationship
 from database import Base
@@ -31,9 +32,12 @@ user_group = Table(
 class User(Base):
     __tablename__ = 'user'
     onid = Column(String, primary_key=True, unique=True, index=True)
-    fname = Column(String(40))
-    lname = Column(String(40))
-    dept = Column(String(40), index=True, nullable=True)
+    fname = Column(String(40), nullable=False)
+    mname = Column(String(40))
+    lname = Column(String(40), nullable=False)
+    dept = Column(String(40), index=True)
+    email = Column(String(40))
+    credentials = Column(PickleType())
     events = relationship("Event",
                           secondary=user_event,
                           backref=backref('user', lazy='dynamic'),
@@ -43,16 +47,18 @@ class User(Base):
                           backref=backref('user', lazy='dynamic'),
                           lazy='dynamic')
 
-    def __init__(self, onid=None, fname=None, lname=None, dept=None,
-                 email=None):
+    def __init__(self, onid=None, fname=None, mname=None, lname=None, dept=None,
+                 email=None, credentials=None):
         self.onid = onid
         self.fname = fname
+        self.mname = mname
         self.lname = lname
         self.dept = dept
         self.email = email
+        self.credentials = credentials
 
     def __repr__(self):
-        return '<User %r %r>' % (self.fname, self.lname)
+        return "<User {0} {1}>".format(self.fname, self.lname)
 
     def is_authenticated(self):
         return True

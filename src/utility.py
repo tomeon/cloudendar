@@ -4,6 +4,7 @@ from __future__ import print_function   # For handy log_diaging to stderr
 import inspect
 import itertools
 import linecache
+import os
 import pwd
 import requests
 import simplejson as json
@@ -13,6 +14,17 @@ import sys
 ONID_LNAME_MINLEN = 6
 ONID_LNAME_MAXLEN = 7
 ONID_DUP_MAX = 3
+ONID_QUERY_URL = "http://web.engr.oregonstate.edu/~schreibm/get_onid.php"
+
+EMAIL_POSTFIX = '@onid.oregonstate.edu'
+
+
+def get_username():
+    return pwd.getpwuid(os.getuid()).pw_name
+
+
+def get_email(postfix=EMAIL_POSTFIX):
+    return "{0}{1}".format(get_username(), postfix)
 
 
 def get_onid(fname, lname):
@@ -71,7 +83,7 @@ def get_onids(users):
 
 
 def request_onids(users):
-    url = "http://web.engr.oregonstate.edu/~schreibm/get_onid.php"
+    url = ONID_QUERY_URL
     payload = users
     headers = {'content-type': 'application/json'}
 

@@ -1,13 +1,102 @@
 {% extends "base.html" %}
-{% import "bootstrap/wtf.html" as wtf %}
+
+<!--
+
+/*
+ *
+ * Copyright 2013 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. */
+
+-->
+
+{% block head_scripts %}
+    <!-- From the Google example application, available at https://developers.google.com/+/quickstart/python -->
+    <script type="text/javascript">
+        /*
+        *
+        * Copyright 2013 Google Inc.
+        *
+        * Licensed under the Apache License, Version 2.0 (the "License");
+        * you may not use this file except in compliance with the License.
+        * You may obtain a copy of the License at
+        *
+        *     http://www.apache.org/licenses/LICENSE-2.0
+        *
+        * Unless required by applicable law or agreed to in writing, software
+        * distributed under the License is distributed on an "AS IS" BASIS,
+        * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        * See the License for the specific language governing permissions and
+        * limitations under the License. */
+
+        // Set up the login button
+        (function() {
+        var po = document.createElement('script');
+        po.type = 'text/javascript'; po.async = true;
+        po.src = 'https://plus.google.com/js/client:plusone.js';
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(po, s);
+        })();
+    </script>
+
+    {# super() call must come after the script that sources the 'gapi' interface #}
+    {{ super() }}
+{% endblock %}
 
 {% block page_content %}
-{{ macros.page_header("Login") }}
 
-<div class="row">
-    <div class="col-md-12">
-        {{ wtf.quick_form(form, form_type="horizontal", horizontal_columns=('md', 2, 10), button_map={'submit': "primary"}) }}
-    </div>
+<div class="jumbotron">
+    <h1>Welcome to {{ APPLICATION_NAME }}!</h1>
+    <p class="text-muted">
+        Please sign in to begin managing your meetings.
+    </p>
+    <p>
+        <div id="gConnect">
+            <!--
+                See https://developers.google.com/+/web/signin/reference for
+                documentation of the values in the button defintion
+            -->
+            <button class="g-signin"
+                role="button"
+                data-scope="{{ SCOPE }}"
+                data-requestvisibleactions="http://schemas.google.com/AddActivity"
+                data-clientId="{{ CLIENT_ID }}"
+                data-accesstype="offline"
+                data-includegrantedscopes="true"
+                data-cookiepolicy="single_host_origin"
+                data-callback="onSignInCallback">
+            </button>
+        </div>
+        <div>
+            <a href="#" data-toggle="modal" data-target="#gPlusWhyModal">Why do we use Google+ Sign In?</a>
+        </div>
+    </p>
 </div>
+
+<div id="gPlusWhyModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Why we use Google+ Sign In</h4>
+            </div>
+            <div class="modal-body">
+                <p>Google+ Sign In makes it easy to verify that you have an
+                Oregon State ONID email account, and also means that you do not
+                have to sign up for an account with this site.</p>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
 
 {% endblock %}

@@ -15,6 +15,7 @@ from wtforms import (
 from wtforms.compat import text_type
 from wtforms.ext.dateutil.fields import DateTimeField
 from wtforms.validators import (
+    DataRequired,
     InputRequired,
     Email,
     EqualTo,
@@ -175,15 +176,14 @@ class SearchForm(Form):
                                           compare_datetime('start')],
                               default=date.today() + relativedelta(hour=13),
                               )
-    #users = TextAreaField('Users', validators=[InputRequired()])
-    users = HiddenListField('Users')
+    #users = HiddenListField('Users', validators=[DataRequired()])
     search_type = RadioField('Narrow by',
                              validators=[InputRequired()],
                              choices=[('open', 'All open times for user(s)'),
                                       ('duration', 'Users free for duration')],
                              default='open',
                              )
-    submit = SubmitField('Submit')
+    findtimes = SubmitField('Find times')
 
 
 class LoginObj(object):
