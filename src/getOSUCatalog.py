@@ -104,6 +104,34 @@ def alternative_names(filename):
 
 
 
+# This function will check that we have not have any duplicates sneak past us and more than one onid id was added
+# to the oniduser table
+def cleanupFinal():
+
+    print "\nFinal Cleanup in process please wait!\n"
+
+    try:
+        # Open our database
+        conn = sqlite3.connect(masterDatabase)
+        print "Opened database successfully";
+
+        # We will get all records that may be duplicate and delete them keeping only the max 1       
+        cmd = "delete from oniduser where rowid not in (select max(rowid) from oniduser group by onid_id);"
+       
+        # Exucute the drop command for teh table requested
+        conn.execute(cmd);
+
+        conn.commit()
+        print "Cleanup completed successfully!"
+        conn.close()
+    except:
+        print "An error occured while tring delete any duplicates form the oniduser table"
+        exit()
+
+
+
+# def cleanupFinal():
+
 
 
 # Function that will drop the OSOCatalog table from our sqllite3 DB
@@ -112,7 +140,7 @@ def dropCattables(table):
     try:
         # Open our database
         conn = sqlite3.connect(masterDatabase)
-        print "Opened database successfully";
+        print "Opened database successfully -- Attempting to drop table";
 
         # Determin which table we will drop and assign sql syntax
         if table == 'cat':
@@ -147,7 +175,7 @@ def createcattables(table):
     try:
         # Open our database
         conn = sqlite3.connect(masterDatabase)
-        print "Opened database successfully";
+        print "Opened database successfully -- Attempting to create table";
 
         # Determin which table we will create and assign sql syntax
         if table == 'cat':
@@ -183,7 +211,7 @@ def populateOSUCatalog(arr):
     try:
         # Open our database
         conn = sqlite3.connect(masterDatabase)
-        print "Opened database successfully";
+        print "Opened database successfully -- Populating the OSUCatalog table please wait!";
 
         # iterate over all the rows in our array and insert then into the database
 
@@ -213,7 +241,7 @@ def populateOSUUsers(arr):
     try:
         # Open our database
         conn = sqlite3.connect(masterDatabase)
-        print "Opened database successfully for oniduser table insertion";
+        print "Opened database successfully for oniduser record insertion -- Please wait!";
 
         print "Inserting " + str(len(arr)) + " Records into the oniduser table. Please wait!";
 
@@ -232,7 +260,7 @@ def populateOSUUsers(arr):
         print "An error occured inserting a row into the database but efforts to finsh all other rows will continue."
         pass
 
-    print "Process Complete!"
+    print "Populate OSUUsers had Completed!"
 
 # def populateOSUUsers(arr):
 
@@ -396,7 +424,7 @@ def getValidCourses(arr):
     try:
         # Open our database
         conn = sqlite3.connect(masterDatabase)
-        print "Opened database successfully to find DISTINCT records";
+        print "Opened database successfully to find DISTINCT records -- Constructing final onid matching records please wait!";
 
         cmd = "SELECT DISTINCT instructor, coursecode, college FROM OSUCatalog;"
        
@@ -699,9 +727,11 @@ def main():
     # Save all results to the oniduser table in the database. 
     populateOSUUsers(t)
 
-    # Final scrub to ensure only one onid ID per instructor. Found exceptions where clampitt c was preceived differnt than clampitt c. 
-    #cleanupFinal()
+    # Final scrub to ensure only one onid ID per instructor.
+    cleanupFinal()
 
+    print "\nAll records and processes have completed! You cam check the output files and the database tables for errors or to inspect results!\n"
+    print "\nPROCESS COMPLETE -- GOODBYE!\n"
 
 # main()
  
