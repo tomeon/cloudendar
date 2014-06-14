@@ -1,29 +1,16 @@
-#import gevent.monkey; gevent.monkey.patch_all()
 import gapi
-# import gevent.wsgi
 import httplib2
 import os
-import pprint
-import re
 import random
-import simplejson as json
 import string
-# import time
-# import urllib
 import utility
-# import werkzeug.serving
 
 from database import db_session, db_init
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-from dateutil.tz import tzutc, tzlocal
+from dateutil import parser
 from flask import (
     Flask,
-    abort,
     flash,
-    g,
     jsonify,
-    make_response,
     redirect,
     render_template,
     request,
@@ -40,61 +27,21 @@ from flask.ext.login import (
 )
 from flaskext.kvsession import KVSessionExtension
 from flask.ext.moment import Moment
-from flask.ext.socketio import SocketIO, emit
-from forms import EventForm, LoginForm, SearchForm, SignupForm
-from models import User, Event
+from flask.ext.socketio import SocketIO
+from forms import SearchForm
+from models import User
 from oauth2client.client import (
-    AccessTokenRefreshError,
     FlowExchangeError,
     flow_from_clientsecrets,
 )
 from simplekv.memory import DictStore
-from wtforms import SelectField
-from wtforms.validators import InputRequired
-from whoosh import index
-from whoosh.fields import Schema, TEXT
-from whoosh.analysis import StemmingAnalyzer
-from whoosh.qparser import QueryParser, MultifieldParser
 
 
 APPLICATION_NAME = 'cloudendar'
 
 
-schema = Schema(name=TEXT(stored=True), value=TEXT(stored=True))
 if not os.path.exists('data'):
     os.mkdir('data')
-
-
-ix = index.create_in('data', schema=schema, indexname="dummy_choices")
-#if not index.exists_in('data', indexname="dummy_choices"):
-#    ix = index.create_in('data', schema=schema, indexname="dummy_choices")
-#else:
-#    ix = index.open_dir('data', indexname="dummy_choices")
-
-
-dummy_users = ["Alice", "Bob", "Carol", "Del", "Edith", "Frank", "Gertrude",
-                "Hiram", "Ilse", "Jon", "Karen", "Lon", "Matilda", "Nick", "Oprah", "Pete",
-                "Quinn", "Rob", "Sarah", "Ted", "Ursula", "Von", "Wendy",
-               "Xavier", "Yolanda", "Zane"]
-dummy_choices = [(unicode(e), unicode(e)) for e in dummy_users]
-dummy_onids = [{"name": unicode(e), "onid": (e)} for e in dummy_users]
-
-
-selected_users = []
-
-
-def index_choices(ix, choices):
-    with ix.writer() as writer:
-        for name, value in choices:
-            writer.add_document(name=name, value=value)
-
-
-def search_index(ix, term):
-    qp = MultifieldParser(['name', 'value'], schema=schema)
-    q = qp.parse(term)
-    with ix.searcher() as searcher:
-        return searcher.search(q, limit=20)
-
 
 def create_app():
     app = Flask(__name__)
@@ -118,8 +65,6 @@ def create_app():
     store = DictStore()
     # This will replace the app's session handling
     KVSessionExtension(store, app)
-
-    index_choices(ix, dummy_choices)
 
     return app
 
@@ -163,8 +108,6 @@ def inject_variables():
 # Teardown hook -- closed on exit
 @app.teardown_appcontext
 def shutdown_db_session(exception=None):
-    # TODO handle revoking credentials more elegantly
-    # revoke_credentials()
     db_session.remove()
 
 
@@ -197,60 +140,113 @@ def index():
     return render_template('index.html',
                            form=form)
 
+
+@app.route('/query', methods=['POST'])
+@login_required
+def run_query():
+    try:
+        # Grab the JSON data from the client
+        payload = request.get_json()
+
+        # Create a list of dictionaries containing the users' names
+        names = []
+        for key, value in payload.iteritems():
+            names.append(value)
+
+        # Request ONIDs from the PHP script on Flip
+        onids = utility.request_onids(names)
+        return jsonify(onids=onids)
+
+    except Exception as e:
+        return jsonify(exception=str(e), status=400)
+
+
 @app.route('/find', methods=['POST'])
 @login_required
 def find_times():
-    print("Got called...")
-
     stored_csrf_token = session.get('csrf_token')
 
     try:
         # Grab the JSON data from the client
         payload = request.get_json()
 
+        # Confirm that the request is coming from the right client
         csrf_token = payload.get('csrf_token')
         if csrf_token is None or csrf_token != stored_csrf_token:
             return jsonify(msg='Access unauthorized', status=401)
 
-        user = session.get('user')
+        person = session.get('person')
         credentials = session.get('credentials')
-        if user is None or credentials is None:
+        if person is None or credentials is None:
             return jsonify(msg='You must be logged in to access this page', status=401)
 
-        usernames = [value.get('onid') for key, value in payload.get('users').iteritems()]
-        if len(usernames) == 0:
+        # Ugh.  Clearly I need to have thought harder about the details of
+        # transferring data between the server and client...
+        usernames = []
+        users = []
+        usermap = {}
+        for user, info in payload.get('users').iteritems():
+            onid = info.get('onid')
+            usernames.append(onid)
+            users.append(user)
+            usermap[onid] = user
+        if len(usermap) == 0:
             return jsonify(msg='No results', status=200)
 
-        print(usernames)
+        start_time = parser.parse(payload.get('start'))
+        end_time = parser.parse(payload.get('end'))
 
+        # Check what kind of search we're doing.  If the value of 'search_type'
+        # is 'duration', we set the argument 'whole' to 'True'.
+        whole = False
+        duration = False
+        search_type = payload.get('search_type')
+        if search_type == 'whole':
+            whole = True
+        elif search_type == 'duration':
+            duration = True
+
+
+        # Instantiate a CalendarAPI object for interacting with the Google Calendar API
         gcal = gapi.CalendarAPI(is_cli_app=False, credentials=credentials)
-        calendars = gcal.query_calendars_free(usernames)
 
-        print(calendars)
-        return jsonify(calendars=calendars)
+        # Get the list of ranges during which the various users are free
+        free_ranges = gcal.get_ranges_overlaps(users=usernames,
+                                               start_time=start_time,
+                                               end_time=end_time,
+                                               whole=whole,
+                                               duration=duration,
+                                               convert_func=utility.moment_format_date)
+
+        # Google's Calendar API returns calendars keyed to emails rather than
+        # usernames, and that propagates through many of the functions defined
+        # on the CalendarAPI class.  Therefore, in order to work with the
+        # JavaScript in search.js, we've got to strip off the email postfix.
+        for item in free_ranges:
+            free_users = map(lambda onid: usermap.get(utility.strip_postfix(onid)), item.get('onids'))
+            item['free_users'] = free_users
+            item['busy_users'] = [user for user in users if user not in free_users]
+
+        return jsonify(free_ranges=free_ranges)
 
     except Exception as e:
-        return jsonify(exception=str(e))
+        return jsonify(exception=str(e), status=400)
 
 
-# This function adapted from the Google Python starter application available at:
+# This function, as well as the 'disconnect' function below, were adapted from
+# the Google Python starter application available at:
 # https://developers.google.com/+/quickstart/python
 @app.route('/connect', methods=["POST"])
 def connect():
     # TODO delete
-    print("SETTING UP AUTH")
     """Exchange the one-time authorization code for a token and
     store the token in the session."""
     # Pull out the state that we saved to authenticate request
     state = session.get('state')
 
-    print("SAVED CSRF: {0}".format(state))
-    print("REQUEST CSRF: {0}".format(request.args.get('state')))
-
     # If we didn't receive back the 'state' token sent from login(),
     # bail out.
     if state != request.args.get('state') or state is None:
-        print("NO/INCORRECT CSRF TOKEN IN REQUEST")
         #response = make_response(json.dumps('Invalid state parameter.'), 401)
         response = jsonify(msg='Invalid state parameter.', status=401)
         return response
@@ -304,7 +300,7 @@ def connect():
     session['credentials'] = credentials
     session['gplus_id'] = gplus_id
     session['username'] = onid
-    session['user'] = person
+    session['person'] = person
 
     # Flash a success message
     flash("Logged in successfully.")
@@ -315,7 +311,6 @@ def connect():
 @app.route('/disconnect', methods=['POST'])
 def disconnect():
     """Revoke current user's token and reset their session."""
-    print("Revoking permissions")
 
     # Only disconnect a connected user.
     credentials = session.get('credentials')
@@ -331,7 +326,6 @@ def disconnect():
 
     if result.get('status') == '200':
         # Reset the user's session.
-        print("RESETTING SESSION")
         del session['credentials']
         flash('Successfully revoked your permissions.')
         response = jsonify(msg='Successfully disconnected.', status=200, redirect=url_for('index'))
@@ -345,53 +339,15 @@ def disconnect():
 
 # TODO: implement destruction of JUST the session and other identifiers.
 # This route cannot be accessed by GET request.  It has to be done by POST,
-# which is currently handled in src/templates/interpreted_js/gapi.js.html, in
+# which is currently handled in src/templates/interpreted_js/gplus, in
 # the 'logoutUser()' function
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     # Delete the session
+    logout_user()
     session.destroy()
-    return jsonify(msg="Logged out successfully", status=200, redirect=url_for('index'))
-
-
-@app.route('/query', methods=['POST'])
-@login_required
-def run_query():
-    try:
-        # Grab the JSON data from the client
-        payload = request.get_json()
-
-        # Create a list of dictionaries containing the users' names
-        names = []
-        for key, value in payload.iteritems():
-            names.append(value)
-
-        # Request ONIDs from the PHP script on Flip
-        onids = utility.request_onids(names)
-        return jsonify(onids=onids)
-
-    except Exception as e:
-        return jsonify(exception=str(e))
-
-
-@app.route('/test')
-@login_required
-def testbed():
-    try:
-        print("{0}".format(current_user))
-    except:
-        print("Couldn't print current user")
-    return redirect(url_for('index'))
-
-
-@socketio.on('connect', namespace='/info')
-def pass_app_data():
-    data = {'APPLICATION_NAME': APPLICATION_NAME,
-            'CLIENT_ID': gapi.WEB_CLIENT_ID,
-            'SCOPE': gapi.APP_SCOPE,
-            'disconnect': url_for('disconnect')
-            }
+    return jsonify(msg="Logged out successfully", status=200, redirect=url_for('login'))
 
 
 @app.errorhandler(401)
@@ -413,17 +369,6 @@ def internal_server_error(e):
     return render_template('error.html',
                            ERROR_CODE=e,
                            ERROR_MSG="An unknown error occurred"), 500
-
-
-# TODO better exception handling
-def revoke_credentials(credentials=None):
-    credentials = credentials or session.get('credentials')
-    http = httplib2.Http()
-    if credentials is not None:
-        try:
-            credentials.revoke(http)
-        except Exception as e:
-            print("Failed to revoke credentials: {0}".format(e))
 
 
 def make_state():

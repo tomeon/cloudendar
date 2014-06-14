@@ -29,7 +29,7 @@
         $('#start').datetimepicker();
         $('#end').datetimepicker();
 
-        $('#results').hide();
+        //$('#results').hide();
         $('#noresults').hide();
 
         // Create empty object to attendees
@@ -71,19 +71,15 @@
         var trFreeTimes = function(obj) {
             newRowText = '<td>' + obj['start'] + '</td><td>' + obj['end'] + '</td>';
             newPeopleList = ''
-            absentees = {};
-            $.each(obj['free_users'], function(index, value) {
-                newPeopleList += '<li>' + value + '</li>';
-            });
-            $.each(obj['busy_users'], function(index, value) {
-                newPeopleList += '<li style="color:red">' + value + '</li>';
+            $.each(obj['onids'], function(index, value) {
+                newPeopleList += '<li>' + value['fname'] + ' ' + value['lname'] + '</li>';
             });
             var people_ul = $('<ul/>', {
                     class: 'list-unstyled',
                 }).append(newPeopleList),
                 people_td = $('<td/>').append(people_ul);
 
-            return $('<tr/>').append(newRowText).append(people_td);
+            return $('<tr/>').append(newRowText).append(people_ul);
         };
 
         // For each item in 'attendees', construct a list item
@@ -138,15 +134,6 @@
 
         // Query the server for free times for the given users
         $("#findtimes").click(function(event) {
-            if($.isEmptyObject(attendees)) {
-                event.preventDefault();
-                return;
-            }
-
-            // Clear out the previous results list
-            $('#freetimesBody').empty();
-
-            // Grab the form data and add the users
             form_arr = $(this).parent().serializeObject();
             form_arr['users'] = attendees;
 
@@ -162,7 +149,7 @@
                         $('#noresults').hide();
                         $.each(free_ranges, function(index, value) {
                             console.log(index + ' ' + JSON.stringify(value));
-                            $('#freetimesBody').append(trFreeTimes(value));
+                            //$('#freetimesBody').append(trFreeTimes(value));
                         });
                     } else {
                         $('#noresults').show();

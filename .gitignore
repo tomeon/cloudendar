@@ -1,8 +1,10 @@
 *.egg-info/
 *.ropeproject/
 *.pyc
-sample.dat
+*.db
+*.sqlite
 *client_secrets.json
 /bin/
 /include/
 /lib/
+src/data/

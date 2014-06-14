@@ -6,6 +6,7 @@ import itertools
 import linecache
 import os
 import pwd
+import re
 import requests
 import simplejson as json
 import sys
@@ -104,6 +105,11 @@ def request_onid(fname, lname):
 def pretty_date(dt):
     return dt.strftime("%m/%d/%Y %I:%M:%S %p")
 
+def moment_format_date(dt):
+    return dt.strftime("%Y-%m-%d %H:%M %p")
+
+def strip_postfix(email):
+    return re.match('^(.*?)@.*$', email).group(1)
 
 # Thanks to user Apogentus at
 # http://stackoverflow.com/questions/14519177/python-exception-handling-line-number
@@ -115,7 +121,7 @@ def log_err(msg):
     filename = frame.f_code.co_filename
     linecache.checkcache(filename)
     line = linecache.getline(filename, lineno, frame.f_globals)
-    print("{} :: {} :: {}: {}: {} ".format(filename, lineno, line.strip(), msg,
+    print("{0} :: {1} :: {2}: {3}: {4} ".format(filename, lineno, line.strip(), msg,
                                            exc_obj), file=sys.stderr)
 
 
@@ -126,7 +132,7 @@ def log_diag(msg):
     caller_fr = inspect.stack()[1]
     frame = caller_fr[0]
     info = inspect.getframeinfo(frame)
-    print("{} :: {} :: {}: {}".format(info.filename, info.function,
+    print("{0} :: {1} :: {2}: {3}".format(info.filename, info.function,
                                       info.lineno, msg), file=sys.stderr)
 
 

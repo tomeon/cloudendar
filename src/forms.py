@@ -180,7 +180,8 @@ class SearchForm(Form):
     search_type = RadioField('Narrow by',
                              validators=[InputRequired()],
                              choices=[('open', 'All open times for user(s)'),
-                                      ('duration', 'Users free for duration')],
+                                      ('whole', 'Times open for all user(s)'),
+                                      ('duration', 'Times when all users are free')],
                              default='open',
                              )
     findtimes = SubmitField('Find times')
