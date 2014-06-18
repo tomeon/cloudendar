@@ -56,7 +56,7 @@ class User(Base):
     lname = Column(String(40), nullable=False)
     dept = Column(String(40), index=True)
     email = Column(String(40))
-    phone = Column(Integer())
+    phone = Column(Integer)
     credentials = Column(PickleType())
     events = relationship("Event",
                           secondary=user_event,
@@ -108,12 +108,13 @@ class Event(Base):
     weekdays = Column(WeekdayList)
     description = Column(String(80))
     duration = Column(Interval)
+    crn = Column(Integer)
+    sec = Column(String)
+    term = Column(String)
 
-    def __init__(self, start_date=None, end_date=None,
-                 start_time=None, end_time=None,
-                 weekdays=None,
-                 duration=None,
-                 description=None):
+    def __init__(self, start_date=None, end_date=None, start_time=None,
+                 end_time=None, weekdays=None, duration=None, description=None,
+                 crn=None, sec=None, term=None):
         self.start_date = start_date
         self.end_date = end_date
         self.start_time = start_time
@@ -121,6 +122,9 @@ class Event(Base):
         self.weekdays = weekdays
         self.duration = duration
         self.description = description
+        self.crn = crn
+        self.sec = sec
+        self.term = term
 
     def __repr__(self):
         return '<Event %r - %r>' % (self.start_date, self.end_date)

@@ -8,8 +8,10 @@ import pprint
 import sqlite3
 import itertools
 import urllib
+import urllib2
 import urlparse
 
+from blessings import terminal
 from bs4 import BeautifulSoup
 from database import db_session, db_init
 from datetime import datetime
@@ -58,7 +60,7 @@ DIRECTORY_QUERY = {
     'type': 'search',
     'cn': '',
     'osudepartment': '',
-    'affiliation': 'any',
+    'affiliation': 'employee',
     'join': 'and',
 }
 
@@ -74,10 +76,8 @@ CATALOG_QUERY = {
 COURSE_LINK_REGEX = "ctl00_ContentPlaceHolder1_gvResults"
 
 COURSE_QUERY = {
-    # All options
-    #'Columns' : 'abcdefghijklmnopqrstuvwxyz',
-    # StartDate, EndDate, Weeks, CRN, Sec, Instructor, Day/Time/Date
-    'Columns': 'bcdjk',
+    # Term, StartDate, EndDate, Weeks, CRN, Sec, Instructor, Day/Time/Date
+    'Columns': 'abcdfgjk',
 }
 
 COURSE_OFFERING_TABLE_ID = "ctl00_ContentPlaceHolder1_SOCListUC1_gvOfferings"
@@ -94,16 +94,20 @@ DAY_MAP = {
 }
 
 
+TERM = Terminal()
+
+
 # Helper to open urls
 class MyOpener(urllib.FancyURLopener):
     version = 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15'
 
 
-OPENER = MyOpener()
+#OPENER = MyOpener()
 
 
 def get_all(url, name=None, attrs={}, recursive=True, text=None, limit=None, **kwargs):
-    page = OPENER.open(url)
+    #page = OPENER.open(url)
+    page = urllib2.urlopen(url)
 
     page_text = page.read()
     page.close()
@@ -124,7 +128,8 @@ def get_category_links():
 def get_course_mappings(path):
     url = set_query_params(CATALOG_URL + path, COURSE_QUERY)
 
-    page = OPENER.open(url)
+    #page = OPENER.open(url)
+    page = urllib2.urlopen(url)
 
     page_text = page.read()
     page.close()
@@ -134,10 +139,10 @@ def get_course_mappings(path):
     table = soup.find('table', id=COURSE_OFFERING_TABLE_ID)
     table_headers = map(lambda th: th.text, table.find_all('th'))
 
-    dept = soup.find('a', href=re.compile('CollegeOverview')).text
-    course_img = soup.find('img', alt='Course')
-    course = course_img.text
-    print("course: {0}".format(course_img))
+    dept = soup.find('a', href=re.compile('CollegeOverview')).text.strip()
+    course = soup.find('img', alt='Course').parent.text
+    strip_ws = re.compile(r'\s+')
+    course = strip_ws.sub(' ', course).strip()
 
     for row in table.find_all('tr'):
         data = map(lambda td: td.text.strip(), row.find_all('td'))
@@ -191,7 +196,10 @@ def parse_courseinfo(course):
         'days': days,
         'weeks': Weeks,
         'dept': dept,
-        'course': course.get('course')
+        'crn': course.get('CRN'),
+        'sec': course.get('Sec'),
+        'term': course.get('Term'),
+        'course': course.get('course'),
     }
 
 
@@ -203,39 +211,59 @@ def courseinfo_to_model(info):
     end_time = info.get('end_time')
 
     weekdays = info.get('days')
-    start_weekday = weekdays[0]
-    end_weekday = weekdays[len(weekdays) - 1]
 
-    start_date = course_start_date + relativedelta(weekday=start_weekday(+1))
-    end_date = course_end_date + relativedelta(weekday=end_weekday(-1))
+    start_date = None
+    end_date = None
+    duration = None
 
-    # We don't worry about extracting JUST the start time, since
-    start_time_dt = datetime.strptime(start_time, '%H%M')
-    end_time_dt = datetime.strptime(end_time, '%H%M')
-    duration = end_time_dt - start_time_dt
+    if weekdays is not None and start_time is not None and end_time is not None:
+        start_weekday = weekdays[0]
+        end_weekday = weekdays[len(weekdays) - 1]
+
+        start_date = course_start_date + relativedelta(weekday=start_weekday(+1))
+        end_date = course_end_date + relativedelta(weekday=end_weekday(-1))
+
+        # We don't worry about extracting JUST the start time, since
+        start_time_dt = datetime.strptime(start_time, '%H%M')
+        end_time_dt = datetime.strptime(end_time, '%H%M')
+        duration = end_time_dt - start_time_dt
+        start_time = start_time_dt.time()
+        end_time = end_time_dt.time()
 
     return Event(
         start_date=start_date,
         end_date=end_date,
-        start_time=start_time_dt.time(),
-        end_time=end_time_dt.time(),
+        start_time=start_time,
+        end_time=end_time,
         weekdays=weekdays,
         duration=duration,
         description=info.get('course'),
+        crn=info.get('crn'),
+        sec=info.get('sec'),
+        term=info.get('term'),
     )
 
 
-def build_directory_query(info):
-    instructor = info.get('instructor')
-    return set_query_params(
-        DIRECTORY_URL_QS,
-        cn="{0} {1}".format(instructor.get('fname'), instructor.get('lname')),
-        osudepartment=info.get('dept')
-    )
-
-
-def remove_br_tags(elem, delim):
-    text = ''
+def build_directory_query(info, by_surname=False):
+    iname = info.get('instructor')
+    if by_surname:
+        ret = set_query_params(
+            DIRECTORY_URL_QS,
+            surname=iname.get('lname')
+        )
+    else:
+        dept = dept_raw = info.get('dept').lower()
+        print("DEPARTMENT RAW: {0}".format(dept_raw))
+        dept_match = re.match(r'^(?:college|school)\s+of\s+(\w+).*$', dept_raw)
+        if dept_match:
+            dept = dept_match.group(1)[:3]
+        print("DEPARTMENT: {0}".format(dept))
+        ret = set_query_params(
+            DIRECTORY_URL_QS,
+            cn="{0} {1}".format(iname.get('fname'), iname.get('lname')),
+            osudepartment=dept
+        )
+    return ret
 
 
 def strip_strings(elem, delim):
@@ -246,7 +274,10 @@ def strip_strings(elem, delim):
 
 
 def instructor_dict_to_model(idict):
-    names = re.match('^(\w+),\s+(\w+)\s*(\w*).*$', idict.get('Full Name'))
+    full_name = idict.get('Full Name')
+    names = None
+    if full_name is not None:
+        names = re.match('^(\w+),\s+(\w+)\s*(\w*).*$', idict.get('Full Name'))
 
     if names:
         fname = names.group(2)
@@ -258,7 +289,9 @@ def instructor_dict_to_model(idict):
         lname = None
 
     phone_raw = idict.get('Office Phone Number')
-    phone = int(filter(lambda c: c >= '0' and c <= '9', phone_raw))
+    phone = None
+    if phone_raw is not None:
+        phone = int(filter(lambda c: c >= '0' and c <= '9', phone_raw))
 
     return User(
         onid=idict.get('ONID Username'),
@@ -271,14 +304,52 @@ def instructor_dict_to_model(idict):
     )
 
 
-def get_instructor_info(url):
-    page = OPENER.open(url)
-
+def get_instructor_info(courseinfo):
+    url = build_directory_query(courseinfo)
+    #page = OPENER.open(url)
+    page = urllib2.urlopen(url)
     page_text = page.read()
     page.close()
 
     soup = BeautifulSoup(page_text)
     record = soup.find('div', {'class': 'record'})
+
+    if record is None:
+        iname = courseinfo.get('instructor')
+        fname = iname.get('fname')
+        lname = iname.get('lname')
+
+        url = build_directory_query(courseinfo, by_surname=True)
+
+        page = urllib2.urlopen(url)
+        page_text = page.read()
+        page.close()
+
+        soup = BeautifulSoup(page_text)
+        record = soup.find('div', {'class': 'record'})
+
+        if record is None:
+            records = soup.find('div', {'id': 'records'})
+
+            if records is None:
+                print("NO INSTRUCTOR BY THE NAME {0} {1}".format(fname, lname))
+                return None
+
+            iname_re = re.compile("^{0},\s+{1}.*$".format(lname, fname[0]))
+
+            ilinks = records.find_all('a', dept=True, text=iname_re)
+            for ilink in ilinks:
+                print("POSSIBLE MATCH: {0}".format(ilink.text))
+            if len(ilinks) != 1:
+                print("AMBIGUOUS RESULTS; SKIPPING")
+                return None
+
+            url = DIRECTORY_URL + ilinks[0]['href']
+            page = urllib2.urlopen(url)
+            page_text = page.read()
+            page.close()
+            soup = BeautifulSoup(page_text)
+            record = soup.find('div', {'class': 'record'})
 
     # DEBUGGING
     if record is None:
@@ -293,36 +364,78 @@ def get_instructor_info(url):
 
         idict[title.text.strip()] = text.strip()
 
+    if not idict:
+        print(record)
+
     return idict
 
 
 def main():
     db_init()
 
+    link_counter = 0
+    course_counter = 0
     links = get_category_links()
     for link in links:
+        link_counter += 1
+        print("########## PROCESSING COURSE CATALOG ENTRY {0} ##########".format(link_counter))
+
         courses = get_course_mappings(link)
 
         for course in courses:
+            course_counter += 1
+            print("########## PROCESSING COURSE {0} ##########".format(course_counter))
+
             courseinfo = parse_courseinfo(course)
+            #print("COURSE INFO: {0}".format(courseinfo))
 
-            dir_url = build_directory_query(courseinfo)
-            idict = get_instructor_info(dir_url)
+            # Skip courses without instructors
+            if(courseinfo.get('instructor')) is None:
+                continue
 
-            instructor = User.query.filter(User.onid == idict.get('onid')).first()
-            print(instructor)
+            inames = courseinfo.get('instructor')
+            #print("INSTRUCTOR: {0}".format(inames))
+            #print("DEPARTMENT: {0}".format(courseinfo.get('dept')))
+            instructor_query = User.query.filter(
+                User.lname == inames.get('lname')).filter(
+                User.fname.startswith(inames.get('fname')[0]))
+
+            if len(instructor_query.all()) == 1:
+                instructor = instructor_query.first()
+            else:
+                instructor = instructor_query.filter(User.dept.like(courseinfo.get('dept'))).first()
+
+            #print("INSTRUCTOR QUERY BY NAME/DEPT: {0}".format(instructor))
+
             if instructor is None:
-                instructor = instructor_dict_to_model(idict)
-                db_session.add(instructor)
+                idict = get_instructor_info(courseinfo)
+                print("COURSE INFO: {0}".format(courseinfo))
+                print("INSTRUCTOR INFO: {0}".format(idict))
+                if not idict:
+                    continue
+                #print("ONID: {0}".format(idict.get('ONID Username')))
+                instructor = User.query.filter(User.onid == idict.get('ONID Username')).first()
 
-            print(courseinfo)
-            event = courseinfo_to_model(courseinfo)
-            instructor.events.append(event)
+                #print("INSTRUCTOR QUERY BY ONID: {0}".format(instructor))
+
+                if instructor is None:
+                    instructor = instructor_dict_to_model(idict)
+                    db_session.add(instructor)
+
+            event = Event.query.filter(
+                Event.user.any(onid=instructor.onid)) .filter(
+                    Event.crn == courseinfo.get('crn')).filter(
+                        Event.term == courseinfo.get('term')).filter(
+                            Event.sec == courseinfo.get('sec')).first()
+
+            if event is None:
+                #print("COURSEINFO: {0}".format(courseinfo))
+                event = courseinfo_to_model(courseinfo)
+                instructor.events.append(event)
+
             db_session.commit()
-            break
 
-        #db_session.commit()
-        break
+
 
     db_session.commit()
     db_session.remove()
